@@ -1,0 +1,35 @@
+"""The bot is intended to demonstrate how to use the hiders mechanism
+to control the visibility of the buttons on the screens.
+"""
+from hammett.core import Application
+from hammett.core.constants import DEFAULT_STATE
+from demos.hiders.screens import MainMenu
+from screens import *
+
+
+def main():
+    """Runs the bot. """
+
+    name = 'School Tasker'
+    app = Application(
+        name,
+        entry_point=MainMenu,
+        states={
+            DEFAULT_STATE: [MainMenu, SchoolTasks, Options, ManageSchoolTasksMain,
+                            ManageSchoolTasksAdd, ManageSchoolTasksAddDetails,
+                            TaskWasAdded, ManageSchoolTasksRemove,
+                            ManageSchoolTasksRemoveConfirm, ReplaceOrAddTask, TaskWasChanged, NotificationScreen,
+                            Reference, WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
+                            ManageSchoolTasksChangeItem,
+                            ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
+                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, ManageAdminUsersMain,
+                            ManageAdminUsersAdd, ManageAdminUsersAddConfirm, ManageAdminUsersRemove,
+                            ManageAdminUsersRemoveConfirm, UserWasMarkedAsAnonim, UserWasMarkedAsAdmin,
+                            ],
+        },
+    )
+    app.run()
+
+
+if __name__ == '__main__':
+    main()
