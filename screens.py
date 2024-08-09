@@ -2289,10 +2289,12 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
         if check_item == "Английский язык":
             return [
                 [
-                    Button('Группа 1️⃣(Мартиросян Астхик Нориковна)', self.set_group_number_1,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
-                    Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.set_group_number_2,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
+                    Button('Группа 1️⃣(Мартиросян Астхик Нориковна)', self.change_group_number,
+                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                           payload=json.dumps({"group_number" : 1})),
+                    Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.change_group_number,
+                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                           payload=json.dumps({"group_number": 2}))
                 ],
                 [
                     Button('⬅️ Назад', self.go_back,
@@ -2302,10 +2304,12 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
         if check_item == "Информатика":
             return [
                 [
-                    Button('Группа 1️⃣(Мамедова Наталья Николаевна)', self.set_group_number_1,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
-                    Button('Группа 2️⃣(Фокин Алексей Юрьевич)', self.set_group_number_2,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
+                    Button('Группа 1️⃣(Мамедова Наталья Николаевна)', self.change_group_number,
+                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                           payload=json.dumps({"group_number": 1})),
+                    Button('Группа 2️⃣(Фокин Алексей Юрьевич)', self.change_group_number,
+                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                           payload=json.dumps({"group_number": 2}))
                 ],
                 [
                     Button('⬅️ Назад', self.go_back,
@@ -2314,26 +2318,16 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
             ]
 
     @register_button_handler
-    async def set_group_number_1(self, update, context):
+    async def change_group_number(self, update, context):
+        payload = json.loads(await self.get_payload(update, context))
+        context.user_data["group_number"] = payload['group_number']
         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
         formattered_index = cursor.fetchall()
         formattered_index = str(formattered_index[self.deletion_index])
         for symbol in REMOVE_SYMBOLS_ITEM:
             formattered_index = formattered_index.replace(symbol, "")
-        cursor.execute("UPDATE SchoolTasker SET group_number = 1 WHERE item_index = ?",
-                       (formattered_index,))
-        connection.commit()
-        return await TaskWasChanged().goto(update, context)
-
-    @register_button_handler
-    async def set_group_number_2(self, update, context):
-        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-        formattered_index = cursor.fetchall()
-        formattered_index = str(formattered_index[self.deletion_index])
-        for symbol in REMOVE_SYMBOLS_ITEM:
-            formattered_index = formattered_index.replace(symbol, "")
-        cursor.execute("UPDATE SchoolTasker SET group_number = 2 WHERE item_index = ?",
-                       (formattered_index,))
+        cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
+                       (context.user_data["group_number"],formattered_index,))
         connection.commit()
         return await TaskWasChanged().goto(update, context)
 
