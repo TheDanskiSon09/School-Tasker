@@ -1,4 +1,3 @@
-"""The module contains the screens the bot consists of. """
 import contextlib
 import json
 import logging
