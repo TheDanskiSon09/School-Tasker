@@ -897,7 +897,7 @@ class Options(Screen):
             [
                 Button(notification_button_title, self.edit_notification_permission,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"index" : notification_permission}))
+                       payload=json.dumps({"index": notification_permission}))
             ],
             [
                 Button('⬅️ Вернуться в главный экран', MainMenu,
@@ -916,7 +916,7 @@ class Options(Screen):
             notification_permission = 1
         user = _update.effective_user
         users_cursor.execute(
-                'UPDATE Users set user_permission = ? WHERE user_id = ?', (notification_permission, user.id))
+            'UPDATE Users set user_permission = ? WHERE user_id = ?', (notification_permission, user.id))
         users_connection.commit()
         return await self.goto(_update, _context)
 
@@ -2273,7 +2273,7 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
                 [
                     Button('Группа 1️⃣(Мартиросян Астхик Нориковна)', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                           payload=json.dumps({"group_number" : 1})),
+                           payload=json.dumps({"group_number": 1})),
                     Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                            payload=json.dumps({"group_number": 2}))
@@ -2309,7 +2309,7 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
         for symbol in REMOVE_SYMBOLS_ITEM:
             formattered_index = formattered_index.replace(symbol, "")
         cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
-                       (context.user_data["group_number"],formattered_index,))
+                       (context.user_data["group_number"], formattered_index,))
         connection.commit()
         return await TaskWasChanged().goto(update, context)
 
