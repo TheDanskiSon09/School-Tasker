@@ -44,11 +44,8 @@ LOGGER = logging.getLogger('hammett')
 
 
 class Global:
-    notification_permission = 1
     last_day = int()
     last_month = int()
-    check_day = str()
-    check_month = str()
     index_store = int(0)
     open_date = True
     is_changing_task_description = False
@@ -162,8 +159,6 @@ def get_multipy_async(index, title, return_value):
     check_month = int(task_month)
     if not out_of_data:
         task_month = str(task_month)
-        Global.check_day = int(task_day)
-        Global.check_month = int(task_month)
         if task_month == "1":
             task_month = "января"
         if task_month == "2":
@@ -272,9 +267,9 @@ async def check_tasks(update, context):
         task_month = str(task_month)
         for symbol in REMOVE_SYMBOLS_ITEM:
             task_month = task_month.replace(symbol, "")
-        Global.check_month = task_month
-        Global.check_day = task_day
-        if int(Global.check_month) <= datetime.now().month and int(Global.check_day) <= datetime.now().day:
+        check_month = task_month
+        check_day = task_day
+        if int(check_month) <= datetime.now().month and int(check_day) <= datetime.now().day:
             cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
             connection.commit()
             database_length = 0
@@ -283,8 +278,6 @@ async def check_tasks(update, context):
         if not out_of_data:
             task_day = str(task_day)
             task_month = str(task_month)
-            Global.check_day = int(task_day)
-            Global.check_month = int(task_month)
             if task_month == "1":
                 task_month = "января"
             if task_month == "2":
@@ -464,7 +457,7 @@ class MainMenu(StartMixin, Screen):
     #
 
     async def _get_user_status(self, user):
-        if user.id in settings.ADMIN_GROUP:
+        if str(user.id) in settings.ADMIN_GROUP:
             # LOGGER.info('The user %s (%s) was added to the admin group.', user.username, user.id)
             return self.admin_status
         else:
@@ -577,7 +570,7 @@ class MainMenu(StartMixin, Screen):
             # When the start handler is invoked through editing
             # the message with the /start command.
             user = update.edited_message.from_user
-        if user.id in settings.ADMIN_GROUP:
+        if str(user.id) in settings.ADMIN_GROUP:
             LOGGER.info('The user %s (%s) was added to the admin group.', user.username, user.id)
         else:
             LOGGER.info('The user %s (%s) was added to the anonim group.', user.username, user.id)
@@ -588,32 +581,20 @@ class MainMenu(StartMixin, Screen):
                 '(?,?,?)',
                 (1, user.id, update.message.chat.first_name))
             users_connection.commit()
-            if user.id in settings.ADMIN_GROUP:
+            if str(user.id) in settings.ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_FIRST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_FIRST[randint(0, 2)]
         except sqlite3.IntegrityError:
-            if user.id in settings.ADMIN_GROUP:
+            if str(user.id) in settings.ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_LATEST[randint(0, 2)]
-            users_cursor.execute("SELECT user_permission from Users WHERE user_id = ?", (user.id,))
-            Global.notification_permission = users_cursor.fetchall()
-            Global.notification_permission = str(Global.notification_permission)
-            for symbol in REMOVE_SYMBOLS_ITEM:
-                Global.notification_permission = Global.notification_permission.replace(symbol, "")
-            Global.notification_permission = int(Global.notification_permission)
         except AttributeError:
-            if user.id in settings.ADMIN_GROUP:
+            if str(user.id) in settings.ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_LATEST[randint(0, 2)]
-            users_cursor.execute("SELECT user_permission from Users WHERE user_id = ?", (user.id,))
-            Global.notification_permission = users_cursor.fetchall()
-            Global.notification_permission = str(Global.notification_permission)
-            for symbol in REMOVE_SYMBOLS_ITEM:
-                Global.notification_permission = Global.notification_permission.replace(symbol, "")
-            Global.notification_permission = int(Global.notification_permission)
         return await super().start(update, context)
 
 
@@ -655,8 +636,7 @@ class ManageAdminUsersAdd(Screen):
             user_id = str(user_id[n])
             for symbol in REMOVE_SYMBOLS_ITEM:
                 user_id = user_id.replace(symbol, "")
-            user_id = int(user_id)
-            if user_id not in settings.ADMIN_GROUP:
+            if str(user_id) not in settings.ADMIN_GROUP:
                 users_cursor.execute("SELECT user_name FROM Users")
                 user_name = users_cursor.fetchall()
                 user_name = str(user_name[n])
@@ -749,8 +729,7 @@ class ManageAdminUsersRemove(Screen):
             user_id = str(user_id[n])
             for symbol in REMOVE_SYMBOLS_ITEM:
                 user_id = user_id.replace(symbol, "")
-            user_id = int(user_id)
-            if (user_id in settings.ADMIN_GROUP and user_id != user.id
+            if (str(user_id) in settings.ADMIN_GROUP and user_id != user.id
                     and user_id != settings.DIRECTOR_ID):
                 users_cursor.execute("SELECT user_name FROM Users")
                 user_name = users_cursor.fetchall()
@@ -903,16 +882,24 @@ class Options(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         global users_cursor
+        user = _update.effective_user
         notification_button_title = str()
-        if Global.notification_permission == 0:
+        users_cursor.execute("SELECT user_permission FROM Users WHERE user_id = ?", (user.id,))
+        notification_permission = users_cursor.fetchone()
+        notification_permission = str(notification_permission)
+        for symbol in REMOVE_SYMBOLS_ITEM:
+            notification_permission = notification_permission.replace(symbol, "")
+        notification_permission = int(notification_permission)
+        if notification_permission == 0:
             notification_button_title = "Включить "
-        if Global.notification_permission == 1:
+        if notification_permission == 1:
             notification_button_title = "Выключить "
         notification_button_title += "рассылки от бота"
         return [
             [
                 Button(notification_button_title, self.edit_notification_permission,
-                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                       payload=json.dumps({"index" : notification_permission}))
             ],
             [
                 Button('⬅️ Вернуться в главный экран', MainMenu,
@@ -923,20 +910,17 @@ class Options(Screen):
     @register_button_handler
     async def edit_notification_permission(self, _update, _context):
         global users_cursor
-        if Global.notification_permission == 0:
-            Global.notification_permission = 1
-            user = _update.effective_user
-            users_cursor.execute(
-                'UPDATE Users set user_permission = ? WHERE user_id = ?', (Global.notification_permission, user.id))
-            users_connection.commit()
-            return await self.goto(_update, _context)
-        if Global.notification_permission == 1:
-            Global.notification_permission = 0
-            user = _update.effective_user
-            users_cursor.execute(
-                'UPDATE Users set user_permission = ? WHERE user_id = ?', (Global.notification_permission, user.id))
-            users_connection.commit()
-            return await self.goto(_update, _context)
+        payload = json.loads(await self.get_payload(_update, _context))
+        notification_permission = payload["index"]
+        if notification_permission == 1:
+            notification_permission = 0
+        else:
+            notification_permission = 1
+        user = _update.effective_user
+        users_cursor.execute(
+                'UPDATE Users set user_permission = ? WHERE user_id = ?', (notification_permission, user.id))
+        users_connection.commit()
+        return await self.goto(_update, _context)
 
 
 class SchoolTasks(Screen):
@@ -1419,7 +1403,7 @@ class ManageSchoolTasksAddDetails(Screen):
             deletion_index = context.user_data['deletion_index']
         except KeyError:
             deletion_index = int()
-        if user.id in settings.ADMIN_GROUP:
+        if str(user.id) in settings.ADMIN_GROUP:
             if self.is_adding_task:
                 self.task_item = context.user_data['task_item']
                 if not self.staged_once and not self.staged_twice:
