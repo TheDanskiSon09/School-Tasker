@@ -10,9 +10,7 @@ from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
 import settings
 import sqlite3
-from constants import REMOVE_SYMBOLS_INDEX, REMOVE_SYMBOLS_ITEM, GREET_ANONIM_FIRST, GREET_ADMIN_FIRST, \
-    GREET_ANONIM_LATEST, GREET_ADMIN_LATEST, MONTH_JAN, MONTH_FEB, MONTH_MARCH, MONTH_APRIL, MONTH_MAY, MONTH_JUNE, \
-    MONTH_JULY, MONTH_AUG, MONTH_SEP, MONTH_OCT, MONTH_NOV, MONTH_DEC
+from constants import *
 from datetime import datetime
 import calendar
 from time import gmtime, strftime
