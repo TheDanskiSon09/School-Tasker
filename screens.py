@@ -60,30 +60,29 @@ def update_day(check_month, task_day):
 
 def logger_alert(user: list, status: str, formattered_index):
     global cursor
-    cursor.execute("SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC")
+    cursor.execute("SELECT task_day FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_day = cursor.fetchall()
-    print(formattered_index)
-    task_day = str(task_day[formattered_index])
+    task_day = str(task_day)
     for symbol in REMOVE_SYMBOLS_ITEM:
         task_day = task_day.replace(symbol, "")
-    cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
+    cursor.execute("SELECT task_month FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_month = cursor.fetchall()
-    task_month = str(task_month[formattered_index])
+    task_month = str(task_month)
     for symbol in REMOVE_SYMBOLS_ITEM:
         task_month = task_month.replace(symbol, "")
-    cursor.execute("SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC")
+    cursor.execute("SELECT item_name FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     item_name = cursor.fetchall()
-    item_name = str(item_name[formattered_index])
+    item_name = str(item_name)
     for symbol in REMOVE_SYMBOLS_ITEM:
         item_name = item_name.replace(symbol, "")
-    cursor.execute("SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC")
+    cursor.execute("SELECT group_number FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     group_number = cursor.fetchall()
-    group_number = str(group_number[formattered_index])
+    group_number = str(group_number)
     for symbol in REMOVE_SYMBOLS_ITEM:
         group_number = group_number.replace(symbol, "")
-    cursor.execute("SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC")
+    cursor.execute("SELECT task_description FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_description = cursor.fetchall()
-    task_description = str(task_description[formattered_index])
+    task_description = str(task_description)
     for symbol in REMOVE_SYMBOLS_ITEM:
         task_description = task_description.replace(symbol, "")
     title = "The "
@@ -430,6 +429,7 @@ async def check_tasks(update, context):
                     for symbol in REMOVE_SYMBOLS_ITEM:
                         formatted_index = formatted_index.replace(symbol, "")
                     formatted_index = int(formatted_index)
+                    logger_alert([0], "delete", formatted_index)
                     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
                     connection.commit()
                     n -= 1
@@ -442,6 +442,7 @@ async def check_tasks(update, context):
                 for symbol in REMOVE_SYMBOLS_ITEM:
                     formatted_index = formatted_index.replace(symbol, "")
                 formatted_index = int(formatted_index)
+                logger_alert([0], "delete", formatted_index)
                 cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
                 connection.commit()
             else:
