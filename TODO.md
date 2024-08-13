@@ -1,6 +1,6 @@
 # TODO
 - [ ] Work on the case when the bot freezes after user spam using the /start command
-- [x] Add LOGGER print after user interaction with database
+- [ ] Add LOGGER print after user interaction with database
   - [ ] Add optimization
 - [ ] Add the task checking function to the task editor
 - [ ] Add a notification from the bot about the imminent expiration of a task and about deleting a task when it expires + add a toggle for this feature in the settings
