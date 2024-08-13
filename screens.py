@@ -409,67 +409,45 @@ async def check_tasks(update, context):
     elif database_length > 1:
         Global.open_date = True
         new_title = str()
+        n = int(0)
         for i in range(database_length):
-            got_error = False
-            check_day = int()
-            check_month = int()
             try:
-                title, check_day, check_month = (get_multipy_async(i, title, 0),
-                                                 get_multipy_async(i, title, 1),
-                                                 get_multipy_async(i, title, 2))
+                title, check_day, check_month = (get_multipy_async(n, title, 0),
+                                                 get_multipy_async(n, title, 1),
+                                                 get_multipy_async(n, title, 2))
             except IndexError:
-                await check_tasks(update, context)
+                title, check_day, check_month = (get_multipy_async(n - 1, title, 0),
+                                                 get_multipy_async(n - 1, title, 1),
+                                                 get_multipy_async(n - 1, title, 2))
             # if check_month <= datetime.now().month or check_day <= datetime.now().day:
             if check_month == datetime.now().month:
                 if check_day <= datetime.now().day:
                     title = ""
-                    cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
+                    cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
+                                   (datetime.now().day, datetime.now().month,))
                     formatted_index = cursor.fetchall()
-                    cursor.execute("SELECT count(*) FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
-                    n = cursor.fetchall()
-                    n = str(n)
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        n = n.replace(symbol, "")
-                    n = int(n)
-                    try:
-                        formatted_index = str(formatted_index[n - 1])
-                    except IndexError:
-                        got_error = True
-                    if not got_error:
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            formatted_index = formatted_index.replace(symbol, "")
-                        formatted_index = int(formatted_index)
-                        cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-                        connection.commit()
-                        await check_tasks(update, context)
-                    else:
-                        pass
-            if check_month < datetime.now().month:
-                title = ""
-                cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
-                formatted_index = cursor.fetchall()
-                cursor.execute("SELECT count(*) FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
-                n = cursor.fetchall()
-                n = str(n)
-                for symbol in REMOVE_SYMBOLS_ITEM:
-                    n = n.replace(symbol, "")
-                n = int(n)
-                try:
-                    formatted_index = str(formatted_index[n - 1])
-                except IndexError:
-                    got_error = True
-                if not got_error:
+                    formatted_index = str(formatted_index[n])
                     for symbol in REMOVE_SYMBOLS_ITEM:
                         formatted_index = formatted_index.replace(symbol, "")
                     formatted_index = int(formatted_index)
                     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
                     connection.commit()
-                    await check_tasks(update, context)
-                else:
-                    pass
+                    n -= 1
+            if check_month < datetime.now().month:
+                title = ""
+                cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
+                               (datetime.now().month,))
+                formatted_index = cursor.fetchall()
+                formatted_index = str(formatted_index[n])
+                for symbol in REMOVE_SYMBOLS_ITEM:
+                    formatted_index = formatted_index.replace(symbol, "")
+                formatted_index = int(formatted_index)
+                cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
+                connection.commit()
             else:
                 new_title = title
                 Global.open_date = False
+                n += 1
             if not new_title:
                 SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
             else:
