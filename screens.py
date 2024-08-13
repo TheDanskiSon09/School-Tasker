@@ -58,6 +58,63 @@ def update_day(check_month, task_day):
         return False
 
 
+def logger_alert(user: list, status: str, formattered_index):
+    global cursor
+    cursor.execute("SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC")
+    task_day = cursor.fetchall()
+    print(formattered_index)
+    task_day = str(task_day[formattered_index])
+    for symbol in REMOVE_SYMBOLS_ITEM:
+        task_day = task_day.replace(symbol, "")
+    cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
+    task_month = cursor.fetchall()
+    task_month = str(task_month[formattered_index])
+    for symbol in REMOVE_SYMBOLS_ITEM:
+        task_month = task_month.replace(symbol, "")
+    cursor.execute("SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC")
+    item_name = cursor.fetchall()
+    item_name = str(item_name[formattered_index])
+    for symbol in REMOVE_SYMBOLS_ITEM:
+        item_name = item_name.replace(symbol, "")
+    cursor.execute("SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC")
+    group_number = cursor.fetchall()
+    group_number = str(group_number[formattered_index])
+    for symbol in REMOVE_SYMBOLS_ITEM:
+        group_number = group_number.replace(symbol, "")
+    cursor.execute("SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC")
+    task_description = cursor.fetchall()
+    task_description = str(task_description[formattered_index])
+    for symbol in REMOVE_SYMBOLS_ITEM:
+        task_description = task_description.replace(symbol, "")
+    title = "The "
+    if len(user) < 2:
+        title += "SchoolTasker has "
+        if status == "add":
+            title += "added task"
+        if status == "delete":
+            title += "deleted task"
+        if status == "change":
+            title += "changed task"
+        title += ": На " + str(task_day) + "." + str(task_month) + " по " + item_name
+        if item_name == "Английский язык" or item_name == "Информатика":
+            title += "(" + str(group_number) + "ая группа)"
+        title += ": " + str(task_description)
+        LOGGER.info(title)
+    else:
+        title += "user " + str(user[0]) + " (" + str(user[1]) + ")" + " has "
+        if status == "add":
+            title += "added task"
+        if status == "delete":
+            title += "deleted task"
+        if status == "change":
+            title += "changed task"
+        title += ": На " + str(task_day) + "." + str(task_month) + " по " + item_name
+        if item_name == "Английский язык" or item_name == "Информатика":
+            title += "(" + str(group_number) + "ая группа)"
+        title += ": " + str(task_description)
+        LOGGER.info(title)
+
+
 def update_month(check_day, task_month):
     months_dict = {
         1: ["Январь", "Января", "январь", "января"],
@@ -350,7 +407,6 @@ async def check_tasks(update, context):
         else:
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
     elif database_length > 1:
-        n = int(0)
         Global.open_date = True
         new_title = str()
         for i in range(database_length):
@@ -358,269 +414,62 @@ async def check_tasks(update, context):
             check_day = int()
             check_month = int()
             try:
-                title, check_day, check_month = (get_multipy_async(n, title, 0),
-                                                 get_multipy_async(n, title, 1), get_multipy_async(n, title, 2))
+                title, check_day, check_month = (get_multipy_async(i, title, 0),
+                                                 get_multipy_async(i, title, 1),
+                                                 get_multipy_async(i, title, 2))
             except IndexError:
-                SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+                await check_tasks(update, context)
             # if check_month <= datetime.now().month or check_day <= datetime.now().day:
             if check_month == datetime.now().month:
                 if check_day <= datetime.now().day:
                     title = ""
-                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime")
-                    formattered_index = cursor.fetchall()
+                    cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
+                    formatted_index = cursor.fetchall()
+                    cursor.execute("SELECT count(*) FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
+                    n = cursor.fetchall()
+                    n = str(n)
+                    for symbol in REMOVE_SYMBOLS_ITEM:
+                        n = n.replace(symbol, "")
+                    n = int(n)
                     try:
-                        formattered_index = str(formattered_index[n])
+                        formatted_index = str(formatted_index[n - 1])
                     except IndexError:
                         got_error = True
-                        cursor.execute("SELECT count(*) FROM SchoolTasker")
-                        db_length = cursor.fetchall()
-                        db_length = str(db_length)
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            db_length = db_length.replace(symbol, "")
-                        db_length = int(db_length)
-                        if db_length > 1:
-                            pass
-                        else:
-                            cursor.execute('SELECT task_day FROM SchoolTasker')
-                            task_day = cursor.fetchall()[0]
-                            task_day = str(task_day)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_day = task_day.replace(symbol, "")
-                            cursor.execute('SELECT task_month FROM SchoolTasker')
-                            task_month = cursor.fetchall()[0]
-                            task_month = str(task_month)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_month = task_month.replace(symbol, "")
-                            task_day = str(task_day)
-                            task_month = str(task_month)
-                            if task_month == "1":
-                                task_month = "января"
-                            if task_month == "2":
-                                task_month = "февраля"
-                            if task_month == "3":
-                                task_month = "марта"
-                            if task_month == "4":
-                                task_month = "апреля"
-                            if task_month == "5":
-                                task_month = "мая"
-                            if task_month == "6":
-                                task_month = "июня"
-                            if task_month == "7":
-                                task_month = "июля"
-                            if task_month == "8":
-                                task_month = "августа"
-                            if task_month == "9":
-                                task_month = "сентября"
-                            if task_month == "10":
-                                task_month = "октября"
-                            if task_month == "11":
-                                task_month = "ноября"
-                            if task_month == "12":
-                                task_month = "декабря"
-                            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
-                            Global.last_day = task_day
-                            Global.last_month = task_month
-                            cursor.execute('SELECT item_name FROM SchoolTasker')
-                            item_name = cursor.fetchall()[0]
-                            item_name = "<strong>" + str(item_name)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                item_name = item_name.replace(symbol, "")
-                            if item_name == "<strong>Английский язык" or item_name == "<strong>Информатика":
-                                item_name += " ("
-                                cursor.execute('SELECT group_number FROM SchoolTasker')
-                                group_number = cursor.fetchall()[0]
-                                group_number = str(group_number)
-                                for symbol in REMOVE_SYMBOLS_ITEM:
-                                    group_number = group_number.replace(symbol, "")
-                                item_name += group_number
-                                item_name += "ая группа)"
-                            else:
-                                pass
-                            item_name += " : </strong>"
-                            cursor.execute('SELECT task_description FROM SchoolTasker')
-                            task_description = cursor.fetchall()[0]
-                            task_description = "<strong>" + str(task_description)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_description = task_description.replace(symbol, "")
-                            task_description += "</strong>\n"
-                            title += task_time + item_name + task_description
-                            new_title = title
-                        await check_tasks(update, context)
                     if not got_error:
                         for symbol in REMOVE_SYMBOLS_ITEM:
-                            formattered_index = formattered_index.replace(symbol, "")
-                        try:
-                            formattered_index = int(formattered_index[n])
-                        except ValueError:
-                            await check_tasks(update, context)
-                        cursor.execute("SELECT item_name FROM SchoolTasker")
-                        item_name = cursor.fetchall()
-                        item_name = str(item_name[formattered_index])
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            item_name = item_name.replace(symbol, "")
-                        cursor.execute("SELECT task_description FROM SchoolTasker")
-                        task_description = cursor.fetchall()
-                        task_description = str(task_description[formattered_index])
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            task_description = task_description.replace(symbol, "")
-                        cursor.execute("SELECT group_number FROM SchoolTasker")
-                        group_number = cursor.fetchall()
-                        group_number = str(group_number[formattered_index])
-                        cursor.execute("SELECT task_day FROM SchoolTasker")
-                        task_day = cursor.fetchall()
-                        task_day = str(task_day[int(formattered_index)])
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            task_day = task_day.replace(symbol, "")
-                        cursor.execute("SELECT task_month FROM SchoolTasker")
-                        task_month = cursor.fetchall()
-                        task_month = str(task_month[int(formattered_index)])
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            task_month = task_month.replace(symbol, "")
-                        for symbol in REMOVE_SYMBOLS_ITEM:
-                            group_number = group_number.replace(symbol, "")
-                        if item_name == "Английский язык" or item_name == "Информатика":
-                            LOGGER.info("The SchoolTasker has deleted task: На %s.%s по %s(%sая группа): %s",
-                                        task_day, task_month, item_name, group_number,
-                                        task_description)
-                        else:
-                            LOGGER.info("The SchoolTasker has deleted task: На %s.%s по %s: %s",
-                                        task_day, task_month, item_name, task_description)
-                        cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-                        cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 WHERE item_index>?',
-                                       (formattered_index,))
+                            formatted_index = formatted_index.replace(symbol, "")
+                        formatted_index = int(formatted_index)
+                        cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
                         connection.commit()
                         await check_tasks(update, context)
+                    else:
+                        pass
             if check_month < datetime.now().month:
                 title = ""
-                cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime")
-                formattered_index = cursor.fetchall()
+                cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
+                formatted_index = cursor.fetchall()
+                cursor.execute("SELECT count(*) FROM SchoolTasker WHERE task_month < ?", (datetime.now().month,))
+                n = cursor.fetchall()
+                n = str(n)
+                for symbol in REMOVE_SYMBOLS_ITEM:
+                    n = n.replace(symbol, "")
+                n = int(n)
                 try:
-                    formattered_index = str(formattered_index[n])
+                    formatted_index = str(formatted_index[n - 1])
                 except IndexError:
                     got_error = True
-                    cursor.execute("SELECT count(*) FROM SchoolTasker")
-                    db_length = cursor.fetchall()
-                    db_length = str(db_length)
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        db_length = db_length.replace(symbol, "")
-                    db_length = int(db_length)
-                    if db_length > 1:
-                        pass
-                    if db_length < 2:
-                        cursor.execute('SELECT task_day FROM SchoolTasker')
-                        try:
-                            task_day = cursor.fetchall()[0]
-                            task_day = str(task_day)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_day = task_day.replace(symbol, "")
-                            cursor.execute('SELECT task_month FROM SchoolTasker')
-                            task_month = cursor.fetchall()[0]
-                            task_month = str(task_month)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_month = task_month.replace(symbol, "")
-                            task_day = str(task_day)
-                            task_month = str(task_month)
-                            if task_month == "1":
-                                task_month = "января"
-                            if task_month == "2":
-                                task_month = "февраля"
-                            if task_month == "3":
-                                task_month = "марта"
-                            if task_month == "4":
-                                task_month = "апреля"
-                            if task_month == "5":
-                                task_month = "мая"
-                            if task_month == "6":
-                                task_month = "июня"
-                            if task_month == "7":
-                                task_month = "июля"
-                            if task_month == "8":
-                                task_month = "августа"
-                            if task_month == "9":
-                                task_month = "сентября"
-                            if task_month == "10":
-                                task_month = "октября"
-                            if task_month == "11":
-                                task_month = "ноября"
-                            if task_month == "12":
-                                task_month = "декабря"
-                            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
-                            Global.last_day = task_day
-                            Global.last_month = task_month
-                            cursor.execute('SELECT item_name FROM SchoolTasker')
-                            item_name = cursor.fetchall()[0]
-                            item_name = "<strong>" + str(item_name)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                item_name = item_name.replace(symbol, "")
-                            if item_name == "<strong>Английский язык" or item_name == "<strong>Информатика":
-                                item_name += " ("
-                                cursor.execute('SELECT group_number FROM SchoolTasker')
-                                group_number = cursor.fetchall()[0]
-                                group_number = str(group_number)
-                                for symbol in REMOVE_SYMBOLS_ITEM:
-                                    group_number = group_number.replace(symbol, "")
-                                item_name += group_number
-                                item_name += "ая группа)"
-                            else:
-                                pass
-                            item_name += " : </strong>"
-                            cursor.execute('SELECT task_description FROM SchoolTasker')
-                            task_description = cursor.fetchall()[0]
-                            task_description = "<strong>" + str(task_description)
-                            for symbol in REMOVE_SYMBOLS_ITEM:
-                                task_description = task_description.replace(symbol, "")
-                            task_description += "</strong>\n"
-                            title += task_time + item_name + task_description
-                            new_title = title
-                            await check_tasks(update, context)
-                        except IndexError:
-                            SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
                 if not got_error:
                     for symbol in REMOVE_SYMBOLS_ITEM:
-                        formattered_index = formattered_index.replace(symbol, "")
-                    formattered_index = int(formattered_index)
-                    cursor.execute("SELECT item_name FROM SchoolTasker")
-                    item_name = cursor.fetchall()
-                    item_name = str(item_name[formattered_index])
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        item_name = item_name.replace(symbol, "")
-                    cursor.execute("SELECT task_description FROM SchoolTasker")
-                    task_description = cursor.fetchall()
-                    task_description = str(task_description[formattered_index])
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        task_description = task_description.replace(symbol, "")
-                    cursor.execute("SELECT group_number FROM SchoolTasker")
-                    group_number = cursor.fetchall()
-                    group_number = str(group_number[formattered_index])
-                    cursor.execute("SELECT task_day FROM SchoolTasker")
-                    task_day = cursor.fetchall()
-                    task_day = str(task_day[int(formattered_index)])
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        task_day = task_day.replace(symbol, "")
-                    cursor.execute("SELECT task_month FROM SchoolTasker")
-                    task_month = cursor.fetchall()
-                    task_month = str(task_month[int(formattered_index)])
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        task_month = task_month.replace(symbol, "")
-                    for symbol in REMOVE_SYMBOLS_ITEM:
-                        group_number = group_number.replace(symbol, "")
-                    if item_name == "Английский язык" or item_name == "Информатика":
-                        LOGGER.info("The SchoolTasker has deleted task: На %s.%s по %s(%sая группа): %s",
-                                    task_day, task_month, item_name, group_number,
-                                    task_description)
-                    else:
-                        LOGGER.info("The SchoolTasker has deleted task: На %s.%s по %s: %s",
-                                    task_day, task_month, item_name, task_description)
-                    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-                    cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 WHERE item_index>?',
-                                   (formattered_index,))
+                        formatted_index = formatted_index.replace(symbol, "")
+                    formatted_index = int(formatted_index)
+                    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
                     connection.commit()
                     await check_tasks(update, context)
+                else:
+                    pass
             else:
-                if not got_error:
-                    new_title = title
-                    Global.open_date = False
-                    n += 1
+                new_title = title
+                Global.open_date = False
             if not new_title:
                 SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
             else:
@@ -2743,31 +2592,7 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
         formattered_index = str(formattered_index[self.deletion_index])
         for symbol in REMOVE_SYMBOLS_ITEM:
             formattered_index = formattered_index.replace(symbol, "")
-        cursor.execute("SELECT item_name FROM SchoolTasker")
-        item_name = cursor.fetchall()
-        item_name = str(item_name[int(formattered_index)])
-        for symbol in REMOVE_SYMBOLS_ITEM:
-            item_name = item_name.replace(symbol, "")
-        cursor.execute("SELECT task_description FROM SchoolTasker")
-        task_description = cursor.fetchall()
-        task_description = str(task_description)
-        for symbol in REMOVE_SYMBOLS_ITEM:
-            task_description = task_description.replace(symbol, "")
-        cursor.execute("SELECT group_number FROM SchoolTasker")
-        group_number = cursor.fetchall()
-        group_number = str(group_number[int(formattered_index)])
-        for symbol in REMOVE_SYMBOLS_ITEM:
-            group_number = group_number.replace(symbol, "")
-        cursor.execute("SELECT task_day FROM SchoolTasker")
-        task_day = cursor.fetchall()
-        task_day = str(task_day[int(formattered_index)])
-        for symbol in REMOVE_SYMBOLS_ITEM:
-            task_day = task_day.replace(symbol, "")
-        cursor.execute("SELECT task_month FROM SchoolTasker")
-        task_month = cursor.fetchall()
-        task_month = str(task_month[int(formattered_index)])
-        LOGGER.info("The user %s (%s) has changed task: На %s.%s по %s(%sая группа): %s",
-                    user.username, user.id, task_day, task_month, item_name, group_number, task_description)
+        logger_alert([user.username, user.id], "change", int(formattered_index))
         cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                        (context.user_data["group_number"], formattered_index,))
         connection.commit()
