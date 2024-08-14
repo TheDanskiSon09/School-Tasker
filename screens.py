@@ -840,7 +840,7 @@ class WhatsNew(Screen):
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button("⬅Вернуться в главное меню", MainMenu, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+                Button("⬅Вернуться в главный экран", MainMenu, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ]
         ]
 
@@ -1352,8 +1352,6 @@ class ManageSchoolTasksAddDetails(Screen):
 
     @register_button_handler
     async def return_back(self, _update, _context):
-        # global
-        # = None
         self.staged_once = False
         self.staged_twice = False
         self.is_adding_task = False
@@ -1556,8 +1554,6 @@ class ManageSchoolTasksAddDetails(Screen):
                     if not success_add:
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     self.is_adding_task = False
-            else:
-                pass
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
