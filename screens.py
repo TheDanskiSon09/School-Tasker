@@ -685,8 +685,6 @@ class ManageAdminUsersAdd(Screen):
                            payload=json.dumps({"button_title": button_title, "user_id": user_id}))
                 ]
                 keyboard.append(button)
-            else:
-                pass
         button = [
             Button("⬅Назад", ManageAdminUsersMain,
                    source_type=SourcesTypes.GOTO_SOURCE_TYPE)
