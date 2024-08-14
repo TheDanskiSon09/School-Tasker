@@ -1,5 +1,4 @@
 # TODO
-- [ ] Work on the case when the bot freezes after user spam using the /start command
 - [x] Add LOGGER print after user interaction with database
 - [ ] Add optimization
 - [ ] Add the task checking function to the task editor
