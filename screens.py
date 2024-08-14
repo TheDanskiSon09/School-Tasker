@@ -78,7 +78,14 @@ async def multipy_delete_task(by_day, n):
     connection.commit()
 
 
-def update_day(check_month, task_day):
+async def once_delete_task():
+    await logger_alert([0], "delete", 0)
+    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
+    connection.commit()
+    SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+
+
+async def update_day(check_month, task_day):
     if task_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), int(check_month))[1]):
         return task_day
     else:
@@ -131,7 +138,7 @@ async def logger_alert(user: list, status: str, formattered_index):
         LOGGER.info(title)
 
 
-def update_month(check_day, task_month):
+async def update_month(check_day, task_month):
     months_dict = {
         1: ["Январь", "Января", "январь", "января"],
         2: ["Февраль", "Февраля", "февраль", "февраля"],
@@ -159,7 +166,7 @@ def update_month(check_day, task_month):
                 pass
 
 
-def get_var_from_database(index, need_variable):
+async def get_var_from_database(index, need_variable):
     global cursor
     variable = None
     if need_variable == "item_name":
@@ -189,26 +196,19 @@ def get_var_from_database(index, need_variable):
     return variable
 
 
-def get_button_title(index):
-    item_name = get_var_from_database(index, "item_name")
+async def get_button_title(index):
+    item_name = await get_var_from_database(index, "item_name")
     if item_name == "Английский язык" or item_name == "Информатика":
-        group_number = get_var_from_database(index, "group_number")
+        group_number = await get_var_from_database(index, "group_number")
         item_name += " (" + str(group_number) + "ая группа) "
-    task_description = get_var_from_database(index, "task_description")
+    task_description = await get_var_from_database(index, "task_description")
     title = item_name
     title += " : "
     title += task_description
     return title
 
 
-def update_task_index(index, index_new):
-    global cursor
-    cursor.execute('UPDATE SchoolTasker set item_index = ? WHERE item_index = ?',
-                   (index_new, index))
-    connection.commit()
-
-
-def get_multipy_async(index, title, return_value):
+async def get_multipy_async(index, title, return_value):
     cursor.execute("select count(*) from SchoolTasker")
     out_of_data = False
     Global.index_store = cursor.fetchone()
@@ -317,16 +317,10 @@ async def check_tasks():
         # if int(check_month) <= datetime.now().month and int(check_day) <= datetime.now().day:
         if int(check_month) == datetime.now().month:
             if int(check_day) <= datetime.now().day:
-                await logger_alert([0], "delete", 0)
-                cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
-                connection.commit()
-                SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+                await once_delete_task()
                 out_of_data = True
         if int(check_month) < datetime.now().month:
-            await logger_alert([0], "delete", 0)
-            cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
-            connection.commit()
-            SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+            await once_delete_task()
             out_of_data = True
         if not out_of_data:
             task_day = str(task_day)
@@ -387,13 +381,13 @@ async def check_tasks():
         n = int(0)
         for i in range(int(database_length)):
             try:
-                title, check_day, check_month = (get_multipy_async(n, title, 0),
-                                                 get_multipy_async(n, title, 1),
-                                                 get_multipy_async(n, title, 2))
+                title, check_day, check_month = (await get_multipy_async(n, title, 0),
+                                                 await get_multipy_async(n, title, 1),
+                                                 await get_multipy_async(n, title, 2))
             except IndexError:
-                title, check_day, check_month = (get_multipy_async(n - 1, title, 0),
-                                                 get_multipy_async(n - 1, title, 1),
-                                                 get_multipy_async(n - 1, title, 2))
+                title, check_day, check_month = (await get_multipy_async(n - 1, title, 0),
+                                                 await get_multipy_async(n - 1, title, 1),
+                                                 await get_multipy_async(n - 1, title, 2))
             if check_month == datetime.now().month:
                 if check_day <= datetime.now().day:
                     title = ""
@@ -762,7 +756,7 @@ class ManageAdminUsersRemove(Screen):
         database_length = users_cursor.fetchone()
         database_length = get_clean_var(database_length, "to_int", False)
         keyboard = []
-        for n in range(database_length):
+        for n in range(int(database_length)):
             users_cursor.execute("SELECT user_id FROM Users")
             user_id = users_cursor.fetchall()
             user_id = get_clean_var(user_id, "to_str", n)
@@ -1586,7 +1580,7 @@ class ManageSchoolTasksAddDetails(Screen):
                     cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
                     check_month = cursor.fetchall()
                     check_month = get_clean_var(check_month, "to_int", deletion_index)
-                    check_task_day = update_day(check_month, self.task_day)
+                    check_task_day = await update_day(check_month, self.task_day)
                     if check_task_day:
                         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                         formattered_index = cursor.fetchall()
@@ -1622,7 +1616,7 @@ class ManageSchoolTasksAddDetails(Screen):
                 cursor.execute("SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC")
                 check_day = cursor.fetchall()
                 check_day = get_clean_var(check_day, "to_int", deletion_index)
-                check_month = update_month(check_day, self.task_month)
+                check_month = await update_month(check_day, self.task_month)
                 if check_month:
                     self.staged_once = False
                     self.staged_twice = False
@@ -1726,7 +1720,7 @@ class ManageSchoolTasksRemove(Screen):
         if not database_length > 99:
             for task_index in range(database_length):
                 try:
-                    button_name = get_button_title(task_index)
+                    button_name = await get_button_title(task_index)
                     button_list = [
                         Button(
                             button_name, self.remove_task,
@@ -1858,7 +1852,7 @@ class ManageSchoolTasksRemoveConfirm(Screen):
             n = int(0)
             Global.open_date = True
             for i in range(database_length):
-                title = get_multipy_async(n, title, 0)
+                title = await get_multipy_async(n, title, 0)
                 Global.open_date = False
                 n += 1
         if not title:
@@ -1979,7 +1973,7 @@ class ManageSchoolTasksChangeMain(Screen):
         if not database_length > 99:
             for task_index in range(database_length):
                 cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime")
-                button_name = get_button_title(task_index)
+                button_name = await get_button_title(task_index)
                 new_button = [Button(button_name, self.change_task,
                                      source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                                      payload=json.dumps({'task_index': task_index}))]
