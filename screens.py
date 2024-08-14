@@ -62,6 +62,22 @@ def get_clean_var(var, new_var_type: str, index: int):
     return var
 
 
+async def multipy_delete_task(by_day, n):
+    if by_day:
+        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
+                       (datetime.now().day, datetime.now().month,))
+    if not by_day:
+        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
+                       (datetime.now().month,))
+    formatted_index = cursor.fetchall()
+    formatted_index = get_clean_var(formatted_index, "to_int", n)
+    await logger_alert([0], "delete", formatted_index)
+    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
+    cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index<?",
+                   (n,))
+    connection.commit()
+
+
 def update_day(check_month, task_day):
     if task_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), int(check_month))[1]):
         return task_day
@@ -69,7 +85,7 @@ def update_day(check_month, task_day):
         return False
 
 
-def logger_alert(user: list, status: str, formattered_index):
+async def logger_alert(user: list, status: str, formattered_index):
     global cursor
     cursor.execute("SELECT task_day FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_day = cursor.fetchall()
@@ -166,6 +182,10 @@ def get_var_from_database(index, need_variable):
         cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = get_clean_var(variable, "to_string", index)
+    if need_variable == "database_length":
+        cursor.execute("SELECT count(*) FROM SchoolTasker")
+        variable = cursor.fetchall()
+        variable = get_clean_var(variable, "to_string", False)
     return variable
 
 
@@ -297,13 +317,13 @@ async def check_tasks():
         # if int(check_month) <= datetime.now().month and int(check_day) <= datetime.now().day:
         if int(check_month) == datetime.now().month:
             if int(check_day) <= datetime.now().day:
-                logger_alert([0], "delete", 0)
+                await logger_alert([0], "delete", 0)
                 cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
                 connection.commit()
                 SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
                 out_of_data = True
         if int(check_month) < datetime.now().month:
-            logger_alert([0], "delete", 0)
+            await logger_alert([0], "delete", 0)
             cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
             connection.commit()
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
@@ -377,27 +397,11 @@ async def check_tasks():
             if check_month == datetime.now().month:
                 if check_day <= datetime.now().day:
                     title = ""
-                    cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
-                                   (datetime.now().day, datetime.now().month,))
-                    formatted_index = cursor.fetchall()
-                    formatted_index = get_clean_var(formatted_index, "to_int", n)
-                    logger_alert([0], "delete", formatted_index)
-                    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-                    cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index>?",
-                                   (n,))
-                    connection.commit()
+                    await multipy_delete_task(True, n)
                     n -= 1
             if check_month < datetime.now().month:
                 title = ""
-                cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
-                               (datetime.now().month,))
-                formatted_index = cursor.fetchall()
-                formatted_index = get_clean_var(formatted_index, "to_int", n)
-                logger_alert([0], "delete", formatted_index)
-                cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-                cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index>?",
-                               (n,))
-                connection.commit()
+                await multipy_delete_task(False, n)
             else:
                 new_title = title
                 Global.open_date = False
@@ -672,7 +676,7 @@ class ManageAdminUsersAdd(Screen):
         database_length = users_cursor.fetchone()
         database_length = get_clean_var(database_length, "to_int", False)
         keyboard = []
-        for n in range(database_length):
+        for n in range(int(database_length)):
             users_cursor.execute("SELECT user_id FROM Users")
             user_id = users_cursor.fetchall()
             user_id = get_clean_var(user_id, "to_str", n)
@@ -680,7 +684,7 @@ class ManageAdminUsersAdd(Screen):
                 users_cursor.execute("SELECT user_name FROM Users")
                 user_name = users_cursor.fetchall()
                 user_name = get_clean_var(user_name, "to_str", n)
-                button_title = user_name + "(" + str(user_id) + ")"
+                button_title = str(user_name) + "(" + str(user_id) + ")"
                 button = [
                     Button(button_title, self.got_to_confirm,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
@@ -1566,7 +1570,7 @@ class ManageSchoolTasksAddDetails(Screen):
                 cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                 formattered_index = cursor.fetchall()
                 formattered_index = get_clean_var(formattered_index, "to_int", deletion_index)
-                logger_alert([user.username, user.id], "change", formattered_index)
+                await logger_alert([user.username, user.id], "change", formattered_index)
                 cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
                                (self.task_description, formattered_index,))
                 connection.commit()
@@ -1589,7 +1593,7 @@ class ManageSchoolTasksAddDetails(Screen):
                         formattered_index = get_clean_var(formattered_index, "to_string", deletion_index)
                         Global.is_changing_month = False
                         Global.is_changing_day = False
-                        logger_alert([user.username, user.id], "change", formattered_index)
+                        await logger_alert([user.username, user.id], "change", formattered_index)
                         cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
                                        (self.task_day, formattered_index,))
                         connection.commit()
@@ -1628,7 +1632,7 @@ class ManageSchoolTasksAddDetails(Screen):
                     cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                     formattered_index = cursor.fetchall()
                     formattered_index = get_clean_var(formattered_index, "to_string", deletion_index)
-                    logger_alert([user.username, user.id], "change", formattered_index)
+                    await logger_alert([user.username, user.id], "change", formattered_index)
                     cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                    (check_month, formattered_index,))
                     connection.commit()
@@ -1654,7 +1658,7 @@ async def send_update_notification(update, context, task_item, task_description,
     cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY item_index DESC LIMIT 1")
     formatted_index = cursor.fetchone()
     formatted_index = get_clean_var(formatted_index, "to_int", False)
-    logger_alert([user.username, user.id], "add", formatted_index)
+    await logger_alert([user.username, user.id], "add", formatted_index)
     id_result = []
     user = update.effective_user
     notification_image = ""
@@ -1793,7 +1797,7 @@ class ManageSchoolTasksRemoveConfirm(Screen):
         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
         formatted_index = cursor.fetchall()
         formatted_index = get_clean_var(formatted_index, "to_int", task_index)
-        logger_alert([user.username, user.id], "delete", formatted_index)
+        await logger_alert([user.username, user.id], "delete", formatted_index)
         cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
         connection.commit()
         cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
@@ -2099,7 +2103,7 @@ class ManageSchoolTasksChangeItem(Screen):
         formattered_index = cursor.fetchall()
         index = int(context.user_data["task_index"])
         formattered_index = get_clean_var(formattered_index, "to_string", index)
-        logger_alert([user.username, user.id], "change", formattered_index)
+        await logger_alert([user.username, user.id], "change", formattered_index)
         cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
                        (context.user_data['task_item'], formattered_index,))
         connection.commit()
@@ -2219,7 +2223,7 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
         formattered_index = cursor.fetchall()
         formattered_index = get_clean_var(formattered_index, "to_int", self.deletion_index)
-        logger_alert([user.username, user.id], "change", formattered_index)
+        await logger_alert([user.username, user.id], "change", formattered_index)
         cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                        (context.user_data["group_number"], formattered_index,))
         connection.commit()
