@@ -140,7 +140,6 @@ async def logger_alert(user: list, status: str, formattered_index):
         if item_name == "Английский язык" or item_name == "Информатика":
             title += "(" + str(group_number) + "ая группа)"
         title += ": " + str(task_description)
-        LOGGER.info(title)
     else:
         title += "user " + str(user[0]) + " (" + str(user[1]) + ")" + " has "
         if status == "add":
@@ -153,7 +152,7 @@ async def logger_alert(user: list, status: str, formattered_index):
         if item_name == "Английский язык" or item_name == "Информатика":
             title += "(" + str(group_number) + "ая группа)"
         title += ": " + str(task_description)
-        LOGGER.info(title)
+    LOGGER.info(title)
 
 
 async def update_month(check_day, task_month):
