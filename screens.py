@@ -1740,26 +1740,6 @@ class ManageSchoolTasksRemoveConfirm(Screen):
             task_month = cursor.fetchall()
             task_month = await get_clean_var(task_month, "to_string", False)
             task_month = await recognise_month(task_month)
-            # if task_month == "1":
-            #     task_month = "января"
-            # if task_month == "2":
-            #     task_month = "февраля"
-            # if task_month == "3":
-            #     task_month = "марта"
-            # if task_month == "4":
-            #     task_month = "апреля"
-            # if task_month == "5":
-            #     task_month = "мая"
-            # if task_month == "6":
-            #     task_month = "июня"
-            # if task_month == "9":
-            #     task_month = "сентября"
-            # if task_month == "10":
-            #     task_month = "октября"
-            # if task_month == "11":
-            #     task_month = "ноября"
-            # if task_month == "12":
-            #     task_month = "декабря"
             task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
             Global.last_day = task_day
             Global.last_month = task_month
