@@ -63,31 +63,20 @@ async def get_clean_var(var, new_var_type: str, index: int):
 
 
 async def recognise_month(month):
-    month = str(month)
-    if month == "1":
-        month = "января"
-    if month == "2":
-        month = "февраля"
-    if month == "3":
-        month = "марта"
-    if month == "4":
-        month = "апреля"
-    if month == "5":
-        month = "мая"
-    if month == "6":
-        month = "июня"
-    if month == "7":
-        month = "июля"
-    if month == "8":
-        month = "августа"
-    if month == "9":
-        month = "сентября"
-    if month == "10":
-        month = "октября"
-    if month == "11":
-        month = "ноября"
-    if month == "12":
-        month = "декабря"
+    month_dict = {"1": "января",
+                  "2": "февраля",
+                  "3": "марта",
+                  "4": "апреля",
+                  "5": "мая",
+                  "6": "июня",
+                  "7": "июля",
+                  "8": "августа",
+                  "9": "сентября",
+                  "10": "октября",
+                  "11": "ноября",
+                  "12": "декабря",
+                  }
+    month = month_dict[str(month)]
     return month
 
 
@@ -102,8 +91,8 @@ async def multipy_delete_task(by_day, n):
     formatted_index = await get_clean_var(formatted_index, "to_int", n)
     await logger_alert([0], "delete", formatted_index)
     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-    cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index>?",
-                   (n,))
+    cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
+                   (formatted_index,))
     connection.commit()
 
 
@@ -319,7 +308,6 @@ async def check_tasks():
         task_month = await get_clean_var(task_month, "to_string", False)
         check_month = task_month
         check_day = task_day
-        # if int(check_month) <= datetime.now().month and int(check_day) <= datetime.now().day:
         if int(check_month) == datetime.now().month:
             if int(check_day) <= datetime.now().day:
                 await once_delete_task()
@@ -387,7 +375,6 @@ async def check_tasks():
                 SchoolTasks.description = new_title
         if database_length < 1:
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
-        # return await SchoolTasks().jump(update, context)
 
 
 async def get_notification_title(task_item, task_description, group_number, task_day, task_month):
