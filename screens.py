@@ -73,7 +73,7 @@ async def multipy_delete_task(by_day, n):
     formatted_index = await get_clean_var(formatted_index, "to_int", n)
     await logger_alert([0], "delete", formatted_index)
     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-    cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index<?",
+    cursor.execute("UPDATE SchoolTasker set item_index = item_index-1 where item_index>?",
                    (n,))
     connection.commit()
 
@@ -1740,6 +1740,7 @@ class ManageSchoolTasksRemove(Screen):
 
     async def get_description(self, _update, _context):
         global cursor
+        await check_tasks()
         cursor.execute("select count(*) from SchoolTasker")
         database_length = cursor.fetchone()
         database_length = await get_clean_var(database_length, "to_int", False)
@@ -1987,6 +1988,7 @@ class ManageSchoolTasksChangeMain(Screen):
 
     async def get_description(self, _update, _context):
         global cursor
+        await check_tasks()
         cursor.execute("select count(*) from SchoolTasker")
         database_length = cursor.fetchone()
         database_length = await get_clean_var(database_length, "to_int", False)
