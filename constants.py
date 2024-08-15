@@ -1,8 +1,6 @@
 from datetime import datetime
 
-NOTIFICATION_ON = 1
 REMOVE_SYMBOLS_ITEM = "(),'[]"
-REMOVE_SYMBOLS_INDEX = "(),'[]"
 GREET_ANONIM_FIRST = {
     0: "<strong>Здравствуйте!👋\nМеня зовут School Tasker - Ваш личный помощник для получения и доставки домашнего "
        "задания,"
