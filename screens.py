@@ -207,8 +207,12 @@ async def get_var_from_database(index, need_variable):
         cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
-    if need_variable == "database_length":
+    if need_variable == "database_length_SchoolTasker":
         cursor.execute("SELECT count(*) FROM SchoolTasker")
+        variable = cursor.fetchall()
+        variable = await get_clean_var(variable, "to_string", False)
+    if need_variable == "database_length_Users":
+        cursor.execute("SELECT count(*) FROM Users")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", False)
     return variable
@@ -227,9 +231,8 @@ async def get_button_title(index):
 
 
 async def get_multipy_async(index, title, return_value):
-    cursor.execute("select count(*) from SchoolTasker")
     out_of_data = False
-    Global.index_store = cursor.fetchone()
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
     Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     cursor.execute('SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC')
     task_day = cursor.fetchall()
@@ -292,8 +295,7 @@ async def get_multipy_async(index, title, return_value):
 async def check_tasks():
     global cursor
     out_of_data = False
-    cursor.execute("select count(*) from SchoolTasker")
-    Global.index_store = cursor.fetchone()
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
     Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     database_length = Global.index_store
     title = str()
@@ -634,8 +636,7 @@ class ManageAdminUsersAdd(Screen):
     description = "<strong>Кого из данных пользователей Вы хотите назначить администратором?</strong>"
 
     async def add_default_keyboard(self, _update, _context):
-        users_cursor.execute("SELECT count(*) FROM Users")
-        database_length = users_cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_Users")
         database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         for n in range(int(database_length)):
@@ -718,8 +719,7 @@ class ManageAdminUsersRemove(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         user = _update.effective_user
-        users_cursor.execute("SELECT count(*) FROM Users ")
-        database_length = users_cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_Users")
         database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         for n in range(int(database_length)):
@@ -951,8 +951,7 @@ class ManageSchoolTasksMain(Screen):
     @register_button_handler
     async def go_to_remove_tasks_screen(self, _update, _context):
         global cursor
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             ManageSchoolTasksRemove.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
@@ -963,8 +962,7 @@ class ManageSchoolTasksMain(Screen):
     @register_button_handler
     async def go_to_change_tasks_screen(self, _update, _context):
         global cursor
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             ManageSchoolTasksChangeMain.description = "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
@@ -1098,8 +1096,7 @@ class ManageSchoolTasksAddGroupNumber(Screen):
 
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month):
     global cursor
-    cursor.execute("select count(*) from SchoolTasker")
-    Global.index_store = cursor.fetchone()
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
     Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     database_length = Global.index_store
     hypertime = str()
@@ -1118,8 +1115,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             (task_item, Global.index_store, group_number, task_description, task_day,
              task_month, hypertime,))
         connection.commit()
-        cursor.execute("select count(*) from SchoolTasker")
-        Global.index_store = cursor.fetchone()
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
         Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         if database_length == 1:
@@ -1166,8 +1162,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             (task_item, Global.index_store, group_number, task_description, task_day,
              task_month, hypertime,))
         connection.commit()
-        cursor.execute("select count(*) from SchoolTasker")
-        Global.index_store = cursor.fetchone()
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
         Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         if database_length == 1:
@@ -1629,8 +1624,7 @@ class ManageSchoolTasksRemove(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         if not database_length > 99:
@@ -1663,8 +1657,7 @@ class ManageSchoolTasksRemove(Screen):
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
@@ -1714,8 +1707,7 @@ class ManageSchoolTasksRemoveConfirm(Screen):
         cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
                        (formatted_index,))
         connection.commit()
-        cursor.execute("select count(*) from SchoolTasker")
-        Global.index_store = cursor.fetchone()
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
         Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         title = str()
@@ -1767,8 +1759,7 @@ class TaskWasRemoved(Screen):
     description = "✅<strong>Задание успешно удалено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             return [
@@ -1864,8 +1855,7 @@ class ManageSchoolTasksChangeMain(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         if not database_length > 99:
@@ -1892,8 +1882,7 @@ class ManageSchoolTasksChangeMain(Screen):
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
-        cursor.execute("select count(*) from SchoolTasker")
-        database_length = cursor.fetchone()
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
         database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
