@@ -210,11 +210,11 @@ async def get_var_from_database(index, need_variable):
     if need_variable == "database_length_SchoolTasker":
         cursor.execute("SELECT count(*) FROM SchoolTasker")
         variable = cursor.fetchall()
-        variable = await get_clean_var(variable, "to_string", False)
+        variable = await get_clean_var(variable, "to_int", False)
     if need_variable == "database_length_Users":
         cursor.execute("SELECT count(*) FROM Users")
         variable = cursor.fetchall()
-        variable = await get_clean_var(variable, "to_string", False)
+        variable = await get_clean_var(variable, "to_int", False)
     return variable
 
 
@@ -233,7 +233,6 @@ async def get_button_title(index):
 async def get_multipy_async(index, title, return_value):
     out_of_data = False
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-    Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     cursor.execute('SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC')
     task_day = cursor.fetchall()
     task_day = await get_clean_var(task_day, "to_string", index)
@@ -296,7 +295,6 @@ async def check_tasks():
     global cursor
     out_of_data = False
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-    Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     database_length = Global.index_store
     title = str()
     if database_length == 0:
@@ -637,9 +635,8 @@ class ManageAdminUsersAdd(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         database_length = await get_var_from_database(None, "database_length_Users")
-        database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
-        for n in range(int(database_length)):
+        for n in range(database_length):
             users_cursor.execute("SELECT user_id FROM Users")
             user_id = users_cursor.fetchall()
             user_id = await get_clean_var(user_id, "to_str", n)
@@ -720,9 +717,8 @@ class ManageAdminUsersRemove(Screen):
     async def add_default_keyboard(self, _update, _context):
         user = _update.effective_user
         database_length = await get_var_from_database(None, "database_length_Users")
-        database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
-        for n in range(int(database_length)):
+        for n in range(database_length):
             users_cursor.execute("SELECT user_id FROM Users")
             user_id = users_cursor.fetchall()
             user_id = await get_clean_var(user_id, "to_str", n)
@@ -952,7 +948,6 @@ class ManageSchoolTasksMain(Screen):
     async def go_to_remove_tasks_screen(self, _update, _context):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             ManageSchoolTasksRemove.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
         if database_length < 1:
@@ -963,7 +958,6 @@ class ManageSchoolTasksMain(Screen):
     async def go_to_change_tasks_screen(self, _update, _context):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             ManageSchoolTasksChangeMain.description = "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
         if database_length < 1:
@@ -1097,7 +1091,6 @@ class ManageSchoolTasksAddGroupNumber(Screen):
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month):
     global cursor
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-    Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
     database_length = Global.index_store
     hypertime = str()
     if int(task_month) < 10:
@@ -1116,7 +1109,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
              task_month, hypertime,))
         connection.commit()
         Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-        Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         if database_length == 1:
             Global.index_store = 0
@@ -1163,7 +1155,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
              task_month, hypertime,))
         connection.commit()
         Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-        Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         if database_length == 1:
             Global.index_store = 0
@@ -1625,7 +1616,6 @@ class ManageSchoolTasksRemove(Screen):
     async def add_default_keyboard(self, _update, _context):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
@@ -1658,7 +1648,6 @@ class ManageSchoolTasksRemove(Screen):
         global cursor
         await check_tasks()
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
         if database_length < 1:
@@ -1708,7 +1697,6 @@ class ManageSchoolTasksRemoveConfirm(Screen):
                        (formatted_index,))
         connection.commit()
         Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-        Global.index_store = await get_clean_var(Global.index_store, "to_int", False)
         database_length = Global.index_store
         title = str()
         if database_length == 1:
@@ -1760,7 +1748,6 @@ class TaskWasRemoved(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0:
             return [
                 [
@@ -1856,13 +1843,12 @@ class ManageSchoolTasksChangeMain(Screen):
     async def add_default_keyboard(self, _update, _context):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
                 cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime")
                 button_name = await get_button_title(task_index)
-                new_button = [Button(str(button_name), self.change_task,
+                new_button = [Button(button_name, self.change_task,
                                      source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                                      payload=json.dumps({'task_index': task_index}))]
                 keyboard.append(new_button)
@@ -1883,7 +1869,6 @@ class ManageSchoolTasksChangeMain(Screen):
         global cursor
         await check_tasks()
         database_length = await get_var_from_database(None, "database_length_SchoolTasker")
-        database_length = await get_clean_var(database_length, "to_int", False)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
         if database_length < 1:
