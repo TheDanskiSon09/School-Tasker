@@ -95,7 +95,7 @@ async def multipy_delete_task(by_day, n):
     if by_day:
         cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
                        (datetime.now().day, datetime.now().month,))
-    if not by_day:
+    else:
         cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
                        (datetime.now().month,))
     formatted_index = cursor.fetchall()
