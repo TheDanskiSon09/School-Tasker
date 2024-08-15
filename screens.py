@@ -62,6 +62,35 @@ async def get_clean_var(var, new_var_type: str, index: int):
     return var
 
 
+async def recognise_month(month):
+    month = str(month)
+    if month == "1":
+        month = "января"
+    if month == "2":
+        month = "февраля"
+    if month == "3":
+        month = "марта"
+    if month == "4":
+        month = "апреля"
+    if month == "5":
+        month = "мая"
+    if month == "6":
+        month = "июня"
+    if month == "7":
+        month = "июля"
+    if month == "8":
+        month = "августа"
+    if month == "9":
+        month = "сентября"
+    if month == "10":
+        month = "октября"
+    if month == "11":
+        month = "ноября"
+    if month == "12":
+        month = "декабря"
+    return month
+
+
 async def multipy_delete_task(by_day, n):
     if by_day:
         cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
@@ -222,31 +251,7 @@ async def get_multipy_async(index, title, return_value):
     task_month = await get_clean_var(task_month, "to_int", index)
     check_month = int(task_month)
     if not out_of_data:
-        task_month = str(task_month)
-        if task_month == "1":
-            task_month = "января"
-        if task_month == "2":
-            task_month = "февраля"
-        if task_month == "3":
-            task_month = "марта"
-        if task_month == "4":
-            task_month = "апреля"
-        if task_month == "5":
-            task_month = "мая"
-        if task_month == "6":
-            task_month = "июня"
-        if task_month == "7":
-            task_month = "июля"
-        if task_month == "8":
-            task_month = "августа"
-        if task_month == "9":
-            task_month = "сентября"
-        if task_month == "10":
-            task_month = "октября"
-        if task_month == "11":
-            task_month = "ноября"
-        if task_month == "12":
-            task_month = "декабря"
+        task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
             if Global.open_date:
                 task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
@@ -324,31 +329,7 @@ async def check_tasks():
             out_of_data = True
         if not out_of_data:
             task_day = str(task_day)
-            task_month = str(task_month)
-            if task_month == "1":
-                task_month = "января"
-            if task_month == "2":
-                task_month = "февраля"
-            if task_month == "3":
-                task_month = "марта"
-            if task_month == "4":
-                task_month = "апреля"
-            if task_month == "5":
-                task_month = "мая"
-            if task_month == "6":
-                task_month = "июня"
-            if task_month == "7":
-                task_month = "июля"
-            if task_month == "8":
-                task_month = "августа"
-            if task_month == "9":
-                task_month = "сентября"
-            if task_month == "10":
-                task_month = "октября"
-            if task_month == "11":
-                task_month = "ноября"
-            if task_month == "12":
-                task_month = "декабря"
+            task_month = await recognise_month(task_month)
             task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
             Global.last_day = task_day
             Global.last_month = task_month
@@ -1165,30 +1146,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         cursor.execute('SELECT task_month FROM SchoolTasker')
         task_month = cursor.fetchall()
         task_month = await get_clean_var(task_month, "to_string", False)
-        if task_month == "1":
-            task_month = "января"
-        if task_month == "2":
-            task_month = "февраля"
-        if task_month == "3":
-            task_month = "марта"
-        if task_month == "4":
-            task_month = "апреля"
-        if task_month == "5":
-            task_month = "мая"
-        if task_month == "6":
-            task_month = "июня"
-        if task_month == "7":
-            task_month = "июля"
-        if task_month == "8":
-            task_month = "августа"
-        if task_month == "9":
-            task_month = "сентября"
-        if task_month == "10":
-            task_month = "октября"
-        if task_month == "11":
-            task_month = "ноября"
-        if task_month == "12":
-            task_month = "декабря"
+        task_month = await recognise_month(task_month)
         task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
         Global.last_day = task_day
         Global.last_month = task_month
@@ -1240,30 +1198,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         connection.commit()
         task_month = cursor.fetchone()
         task_month = await get_clean_var(task_month, "to_string", False)
-        if task_month == "1":
-            task_month = "января"
-        if task_month == "2":
-            task_month = "февраля"
-        if task_month == "3":
-            task_month = "марта"
-        if task_month == "4":
-            task_month = "апреля"
-        if task_month == "5":
-            task_month = "мая"
-        if task_month == "6":
-            task_month = "июня"
-        if task_month == "7":
-            task_month = "июля"
-        if task_month == "8":
-            task_month = "августа"
-        if task_month == "9":
-            task_month = "сентября"
-        if task_month == "10":
-            task_month = "октября"
-        if task_month == "11":
-            task_month = "ноября"
-        if task_month == "12":
-            task_month = "декабря"
+        task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
             task_time = ""
         else:
@@ -1804,26 +1739,27 @@ class ManageSchoolTasksRemoveConfirm(Screen):
             cursor.execute('SELECT task_month FROM SchoolTasker')
             task_month = cursor.fetchall()
             task_month = await get_clean_var(task_month, "to_string", False)
-            if task_month == "1":
-                task_month = "января"
-            if task_month == "2":
-                task_month = "февраля"
-            if task_month == "3":
-                task_month = "марта"
-            if task_month == "4":
-                task_month = "апреля"
-            if task_month == "5":
-                task_month = "мая"
-            if task_month == "6":
-                task_month = "июня"
-            if task_month == "9":
-                task_month = "сентября"
-            if task_month == "10":
-                task_month = "октября"
-            if task_month == "11":
-                task_month = "ноября"
-            if task_month == "12":
-                task_month = "декабря"
+            task_month = await recognise_month(task_month)
+            # if task_month == "1":
+            #     task_month = "января"
+            # if task_month == "2":
+            #     task_month = "февраля"
+            # if task_month == "3":
+            #     task_month = "марта"
+            # if task_month == "4":
+            #     task_month = "апреля"
+            # if task_month == "5":
+            #     task_month = "мая"
+            # if task_month == "6":
+            #     task_month = "июня"
+            # if task_month == "9":
+            #     task_month = "сентября"
+            # if task_month == "10":
+            #     task_month = "октября"
+            # if task_month == "11":
+            #     task_month = "ноября"
+            # if task_month == "12":
+            #     task_month = "декабря"
             task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
             Global.last_day = task_day
             Global.last_month = task_month
