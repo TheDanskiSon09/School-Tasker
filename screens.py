@@ -56,10 +56,9 @@ async def get_clean_var(var, new_var_type: str, index: int):
     for symbol in REMOVE_SYMBOLS_ITEM:
         var = var.replace(symbol, "")
     if new_var_type == "to_string":
-        var = str(var)
+        return str(var)
     if new_var_type == "to_int":
-        var = int(var)
-    return var
+        return int(var)
 
 
 async def recognise_month(month):
@@ -185,36 +184,41 @@ async def update_month(check_day, task_month):
 
 async def get_var_from_database(index, need_variable):
     global cursor
-    variable = None
     if need_variable == "item_name":
         cursor.execute("SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
+        return str(variable)
     if need_variable == "group_number":
         cursor.execute("SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
+        return str(variable)
     if need_variable == "task_description":
         cursor.execute("SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
+        return str(variable)
     if need_variable == "task_day":
         cursor.execute("SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
+        return str(variable)
     if need_variable == "task_month":
         cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_string", index)
+        return str(variable)
     if need_variable == "database_length_SchoolTasker":
         cursor.execute("SELECT count(*) FROM SchoolTasker")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_int", False)
+        return int(variable)
     if need_variable == "database_length_Users":
         cursor.execute("SELECT count(*) FROM Users")
         variable = cursor.fetchall()
         variable = await get_clean_var(variable, "to_int", False)
-    return variable
+        return int(variable)
 
 
 async def get_button_title(index):
@@ -347,7 +351,7 @@ async def check_tasks():
         Global.open_date = True
         new_title = str()
         n = int(0)
-        for i in range(int(database_length)):
+        for i in range(database_length):
             try:
                 title, check_day, check_month = (await get_multipy_async(n, title, 0),
                                                  await get_multipy_async(n, title, 1),
