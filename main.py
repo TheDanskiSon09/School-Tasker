@@ -15,7 +15,7 @@ def main():
                             ManageSchoolTasksAdd, ManageSchoolTasksAddDetails,
                             TaskWasAdded, ManageSchoolTasksRemove,
                             ManageSchoolTasksRemoveConfirm, ReplaceOrAddTask, TaskWasChanged, NotificationScreen,
-                            Reference, WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
+                            WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
                             ManageSchoolTasksChangeItem,
                             ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
                             ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, ManageAdminUsersMain,

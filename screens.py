@@ -431,18 +431,6 @@ async def get_notification_title(task_item, task_description, group_number, task
     return title
 
 
-class Reference(Screen):
-    description = ("В данной справке приведены ответы на все вопросы, которые могут возникнуть при работе с "
-                   "ботом.")
-
-    async def add_default_keyboard(self, _update, _context):
-        return [
-            [
-                Button("⬅Вернуться в главное меню", MainMenu, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
-            ]
-        ]
-
-
 class NotificationScreen(Screen):
     description = "ERROR 451!"
 
@@ -509,10 +497,6 @@ class MainMenu(StartMixin, Screen):
                     Button('Настройки⚙', Options,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
-                # [
-                #     Button('Справка для пользователей📄', Reference,
-                #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                # ],
                 [
                     Button('Что нового сегодня?✨', WhatsNew,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
@@ -549,10 +533,6 @@ class MainMenu(StartMixin, Screen):
                     Button('Настройки⚙', Options,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
-                # [
-                #     Button('Справка для пользователей📄', Reference,
-                #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                # ],
                 [
                     Button('Что нового сегодня?✨', WhatsNew,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
