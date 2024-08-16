@@ -381,53 +381,31 @@ async def check_tasks():
 
 
 async def get_notification_title(task_item, task_description, group_number, task_day, task_month):
-    is_group_item = False
     title = "На " + str(task_day)
     add_month_txt = " " + str(task_month)
     title += str(add_month_txt)
     title += " было добавлено задание по "
-    add_task_txt = str()
-    if task_item == "Алгебра":
-        add_task_txt = "Алгебре"
-    if task_item == "Алгебра":
-        add_task_txt = "Алгебре"
-    if task_item == "Английский язык":
-        add_task_txt = "Английскому языку"
-        is_group_item = True
-    if task_item == "Биология":
-        add_task_txt = "Биологии"
-    if task_item == "География":
-        add_task_txt = "Географии"
-    if task_item == "Геометрия":
-        add_task_txt = "Геометрии"
-    if task_item == "Информатика":
-        add_task_txt = "Информатике"
-        is_group_item = True
-    if task_item == "История":
-        add_task_txt = "Истории"
-    if task_item == "Литература":
-        add_task_txt = "Литературе"
-    if task_item == "Музыка":
-        add_task_txt = "Музыке"
-    if task_item == "Обществознание":
-        add_task_txt = "Обществознанию"
-    if task_item == "ОБЖ":
-        add_task_txt = "ОБЖ"
-    if task_item == "Решение задач повышенного уровня по алгебре":
-        add_task_txt = "Решению задач повышенного уровня по алгебре"
-    if task_item == "Русский язык":
-        add_task_txt = "Русскому языку"
-    if task_item == "Технология":
-        add_task_txt = "Технологии"
-    if task_item == "Физика":
-        add_task_txt = "Физике"
-    if task_item == "Химия":
-        add_task_txt = "Химии"
+    item_dict = {"Алгебра": "Алгебре",
+                 "Английский язык": "Английскому языку",
+                 "Биология": "Биологии",
+                 "География": "Географии",
+                 "Геометрия": "Геометрии",
+                 "Информатика": "Информатике",
+                 "История": "Истории",
+                 "Литература": "Литературе",
+                 "Музыка": "Музыке",
+                 "Обществознание": "Обществознанию",
+                 "ОБЖ": "ОБЖ",
+                 "Русский язык": "Русскому языку",
+                 "Технология": "Технологии",
+                 "Физика": "Физике",
+                 "Химия": "Химии"}
+    add_task_txt = item_dict[task_item]
     title += add_task_txt
-    if is_group_item:
+    if add_task_txt == "Английскому языку" or add_task_txt == "Информатике":
         group_txt = " (" + str(group_number) + "ая " + "группа) "
         title += group_txt
-    title += ": " + task_description
+    title += ": " + task_description + "</strong>"
     return title
 
 
@@ -437,7 +415,7 @@ class NotificationScreen(Screen):
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button("⬅В главное меню", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)
+                Button("⬅В главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)
             ]
         ]
 
@@ -688,7 +666,7 @@ class UserWasMarkedAsAdmin(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
             [
-                Button('⬅️ В главное меню', MainMenu,
+                Button('⬅️ В главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -773,7 +751,7 @@ class UserWasMarkedAsAnonim(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
             [
-                Button('⬅️ В главное меню', MainMenu,
+                Button('⬅️ В главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -1212,7 +1190,7 @@ class TaskWasChanged(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
             [
-                Button('⬅️ В главное меню', MainMenu,
+                Button('⬅️ В главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -1550,7 +1528,7 @@ async def send_update_notification(update, context, task_item, task_description,
         users_cursor.execute('SELECT user_name FROM Users WHERE user_id = ?', (user_id,))
         send_name = users_cursor.fetchone()
         send_name = await get_clean_var(send_name, "to_string", False)
-        notification_title = "Здравствуйте, " + str(send_name) + "!" + "\n"
+        notification_title = "<strong>Здравствуйте, " + str(send_name) + "!" + "\n"
         notification_title += await get_notification_title(task_item, task_description,
                                                            group_number, task_day, task_month)
         config = RenderConfig(
@@ -1584,7 +1562,7 @@ class TaskWasAdded(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
             [
-                Button('⬅️ В главное меню', MainMenu,
+                Button('⬅️ В главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -1742,7 +1720,7 @@ class TaskWasRemoved(Screen):
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
                 [
-                    Button('⬅️ В главное меню', MainMenu,
+                    Button('⬅️ В главный экран', MainMenu,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE)
                 ],
             ]
@@ -1753,7 +1731,7 @@ class TaskWasRemoved(Screen):
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
                 [
-                    Button('⬅️ В главное меню', MainMenu,
+                    Button('⬅️ В главный экран', MainMenu,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE)
                 ],
             ]
