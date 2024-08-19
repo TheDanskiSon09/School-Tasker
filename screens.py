@@ -524,12 +524,7 @@ class MainMenu(StartMixin, Screen):
                 MainMenu.description = GREET_ADMIN_FIRST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_FIRST[randint(0, 2)]
-        except sqlite3.IntegrityError:
-            if str(user.id) in settings.ADMIN_GROUP:
-                MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
-            else:
-                MainMenu.description = GREET_ANONIM_LATEST[randint(0, 2)]
-        except AttributeError:
+        except sqlite3.IntegrityError or AttributeError:
             if str(user.id) in settings.ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
@@ -942,7 +937,6 @@ class ManageSchoolTasksAddGroupNumber(Screen):
                 Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"group_number": 2})))
-
         if _context.user_data['task_item'] == "Информатика":
             buttons.append(
                 Button('Группа 1️⃣(Мамедова Наталья Николаевна)', self.get_group_number,
@@ -1154,7 +1148,6 @@ class ManageSchoolTasksAddDetails(Screen):
 
     @register_typing_handler
     async def set_details(self, update, context):
-        success_add = False
         user = update.effective_user
         try:
             self.group_number = context.user_data['group_number']
@@ -1186,150 +1179,76 @@ class ManageSchoolTasksAddDetails(Screen):
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                 if self.staged_once and self.staged_twice:
                     self.task_month = update.message.text
-                    if (self.task_month == "Январь" or self.task_month == "Января"
-                            or self.task_month == "январь" or self.task_month == "января"):
-                        self.task_month = int(1)
-                        self.staged_once = False
+                    month_dict = {"Январь": 1,
+                                  "Января": 1,
+                                  "январь": 1,
+                                  "января": 1,
+                                  "Февраль": 2,
+                                  "Февраля": 2,
+                                  "февраль": 2,
+                                  "февраля": 2,
+                                  "Март": 3,
+                                  "Марта": 3,
+                                  "март": 3,
+                                  "марта": 3,
+                                  "Апрель": 4,
+                                  "Апреля": 4,
+                                  "апрель": 4,
+                                  "апреля": 4,
+                                  "Май": 5,
+                                  "Мая": 5,
+                                  "май": 5,
+                                  "мая": 5,
+                                  "Июнь": 6,
+                                  "Июня": 6,
+                                  "июнь": 6,
+                                  "июня": 6,
+                                  "Июль": 7,
+                                  "Июля": 7,
+                                  "июль": 7,
+                                  "июля": 7,
+                                  "Август": 8,
+                                  "Августа": 8,
+                                  "август": 8,
+                                  "августа": 8,
+                                  "Сентябрь": 9,
+                                  "Сентября": 9,
+                                  "сентябрь": 9,
+                                  "сентября": 9,
+                                  "Октябрь": 10,
+                                  "Октября": 10,
+                                  "октябрь": 10,
+                                  "октября": 10,
+                                  "Ноябрь": 11,
+                                  "Ноября": 11,
+                                  "ноябрь": 11,
+                                  "ноября": 11,
+                                  "Декабрь": 12,
+                                  "Декабря": 12,
+                                  "декабрь": 12,
+                                  "декабря": 12
+                                  }
+                    day_limit = {1: 31,
+                                 2: 29,
+                                 3: 31,
+                                 4: 30,
+                                 5: 31,
+                                 6: 30,
+                                 7: 31,
+                                 8: 31,
+                                 9: 30,
+                                 10: 31,
+                                 11: 30,
+                                 12: 31
+                                 }
+                    self.task_month = month_dict[self.task_month]
+                    max_month_day = day_limit[self.task_month]
+                    if int(self.task_day) > max_month_day:
+                        self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
+                                            "дней!\nНа какое число дано задание?</strong>")
                         self.staged_twice = False
-                        self.description = "<strong>Введите текст задания:</strong>"
-                        success_add = True
-                        await add_task_school(update, context, self.task_item, self.task_description,
-                                              self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Февраль" or self.task_month == "Февраля"
-                            or self.task_month == "февраль" or self.task_month == "февраля"):
-                        if int(self.task_day) > 29:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(2)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Март" or self.task_month == "Марта"
-                            or self.task_month == "март" or self.task_month == "марта"):
-                        self.task_month = int(3)
-                        self.staged_once = False
-                        self.staged_twice = False
-                        self.description = "<strong>Введите текст задания:</strong>"
-                        success_add = True
-                        await add_task_school(update, context, ManageSchoolTasksAddDetails.task_item,
-                                              self.task_description, self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Апрель" or self.task_month == "Апреля"
-                            or self.task_month == "апрель" or self.task_month == "апреля"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(4)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Май" or self.task_month == "Мая"
-                            or self.task_month == "май" or self.task_month == "мая"):
-                        self.task_month = int(5)
-                        self.staged_once = False
-                        self.staged_twice = False
-                        self.description = "<strong>Введите текст задания:</strong>"
-                        success_add = True
-                        await add_task_school(update, context, self.task_item, self.task_description,
-                                              self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Июнь" or self.task_month == "Июня"
-                            or self.task_month == "июнь" or self.task_month == "июня"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(6)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Июль" or self.task_month == "Июля"
-                            or self.task_month == "июль" or self.task_month == "июля"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(7)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Август" or self.task_month == "Августа"
-                            or self.task_month == "август" or self.task_month == "августа"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(8)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Сентябрь" or self.task_month == "Сентября"
-                            or self.task_month == "сентябрь" or self.task_month == "сентября"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(9)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Октябрь" or self.task_month == "Октября"
-                            or self.task_month == "октябрь" or self.task_month == "октября"):
-                        self.task_month = int(10)
-                        self.staged_once = False
-                        self.staged_twice = False
-                        self.description = "<strong>Введите текст задания:</strong>"
-                        success_add = True
-                        await add_task_school(update, context, self.task_item, self.task_description,
-                                              self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Ноябрь" or self.task_month == "Ноября"
-                            or self.task_month == "ноябрь" or self.task_month == "ноября"):
-                        if int(self.task_day) > 30:
-                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                                "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
-                            return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            self.task_month = int(11)
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            success_add = True
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
-                    if (self.task_month == "Декабрь" or self.task_month == "Декабря"
-                            or self.task_month == "декабрь" or self.task_month == "декабря"):
-                        self.task_month = int(12)
+                        return await ManageSchoolTasksAddDetails().jump(update, context)
+                    else:
                         self.staged_once = False
                         self.staged_twice = False
                         self.description = "<strong>Введите текст задания:</strong>"
@@ -1489,8 +1408,6 @@ class TaskWasAdded(Screen):
 class ManageSchoolTasksRemove(Screen):
     global cursor
     tasks_numbers = []
-
-    # description = 'На данный момент список заданий пуст!'
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
