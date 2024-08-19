@@ -1021,7 +1021,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
         TaskWasAdded.task_description, TaskWasAdded.group_number, TaskWasAdded.task_day, TaskWasAdded.task_month = (
             task_description, group_number, task_day, task_month)
-        return await TaskWasAdded().jump(_update, _context)
     elif database_length > 0:
         cursor.execute(
             'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
