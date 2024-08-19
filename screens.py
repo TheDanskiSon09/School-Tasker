@@ -1354,7 +1354,6 @@ async def send_update_notification(update, context, task_item, task_description,
     formatted_index = await get_clean_var(formatted_index, "to_int", False)
     await logger_alert([user.username, user.id], "add", formatted_index)
     id_result = []
-    user = update.effective_user
     notification_image = ""
     for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
                                        (user.id,)):
@@ -1480,7 +1479,6 @@ class ManageSchoolTasksRemoveConfirm(Screen):
     async def delete_school_task(self, _update, _context):
         global cursor
         Global.index_store -= 1
-
         task_index = _context.user_data['task_index']
         user = _update.effective_user
         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
