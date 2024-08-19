@@ -126,31 +126,21 @@ async def logger_alert(user: list, status: str, formattered_index):
     cursor.execute("SELECT task_description FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_description = cursor.fetchall()
     task_description = await get_clean_var(task_description, "to_string", False)
+    status_dict = {"add": "added",
+                   "delete": "deleted",
+                   "change": "changed"}
     title = "The "
     if len(user) < 2:
         title += "SchoolTasker has "
-        if status == "add":
-            title += "added task"
-        if status == "delete":
-            title += "deleted task"
-        if status == "change":
-            title += "changed task"
-        title += ": На " + str(task_day) + "." + str(task_month) + " по " + str(item_name)
-        if item_name == "Английский язык" or item_name == "Информатика":
-            title += "(" + str(group_number) + "ая группа)"
-        title += ": " + str(task_description)
     else:
         title += "user " + str(user[0]) + " (" + str(user[1]) + ")" + " has "
-        if status == "add":
-            title += "added task"
-        if status == "delete":
-            title += "deleted task"
-        if status == "change":
-            title += "changed task"
-        title += ": На " + str(task_day) + "." + str(task_month) + " по " + str(item_name)
-        if item_name == "Английский язык" or item_name == "Информатика":
-            title += "(" + str(group_number) + "ая группа)"
-        title += ": " + str(task_description)
+    status = status_dict[status]
+    status += " task"
+    title += status
+    title += ": На " + str(task_day) + "." + str(task_month) + " по " + str(item_name)
+    if item_name == "Английский язык" or item_name == "Информатика":
+        title += "(" + str(group_number) + "ая группа)"
+    title += ": " + str(task_description)
     LOGGER.info(title)
 
 
