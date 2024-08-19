@@ -1414,7 +1414,7 @@ class ManageSchoolTasksRemove(Screen):
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
-                try:
+                with contextlib.suppress(KeyError):
                     button_name = await get_button_title(task_index)
                     button_list = [
                         Button(
@@ -1424,8 +1424,6 @@ class ManageSchoolTasksRemove(Screen):
                         )
                     ]
                     keyboard.append(button_list)
-                except KeyError:
-                    pass
             exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
                                   source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
             keyboard.append(exit_button)
