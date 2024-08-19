@@ -168,8 +168,6 @@ async def update_month(check_day, task_month):
                     return check_month
                 else:
                     return False
-            else:
-                pass
 
 
 async def get_var_from_database(index, need_variable):
@@ -239,8 +237,6 @@ async def get_multipy_async(index, title, return_value):
             group_number = await get_clean_var(group_number, "to_string", index)
             item_name += group_number
             item_name += "ая группа)"
-        else:
-            pass
         item_name += " : </strong>"
         cursor.execute('SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC')
         task_description = cursor.fetchall()
@@ -666,8 +662,6 @@ class ManageAdminUsersRemove(Screen):
                            payload=json.dumps({"button_title": button_title, "user_id": user_id}))
                 ]
                 keyboard.append(button)
-            else:
-                pass
         button = [
             Button("⬅Назад", ManageAdminUsersMain,
                    source_type=SourcesTypes.GOTO_SOURCE_TYPE)
@@ -1124,8 +1118,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             group_number = await get_clean_var(group_number, "to_string", False)
             item_name += str(group_number)
             item_name += "ая группа)"
-        else:
-            pass
         item_name += " : "
         cursor.execute('SELECT task_description FROM SchoolTasker WHERE item_index = ?',
                        (Global.index_store,))
@@ -1229,8 +1221,6 @@ class ManageSchoolTasksAddDetails(Screen):
                         self.task_day = int(self.task_day)
                         if self.task_day > 31 or self.task_day < 1:
                             return await ManageSchoolTasksAddDetails().jump(update, context)
-                        else:
-                            pass
                         self.staged_twice = True
                         self.description = "<strong>На какой месяц задано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
