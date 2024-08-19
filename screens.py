@@ -735,61 +735,25 @@ class WhatsNew(Screen):
     async def get_description(self, _update, _context):
         current_day = datetime.now().day
         current_month = datetime.now().month
-        # current_day = 4
-        # current_month = 1
         try:
             title = str()
             title += "<strong>"
-            if current_month == 1:
-                title += str(MONTH_JAN[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 2:
-                title += str(MONTH_FEB[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 3:
-                title += str(MONTH_MARCH[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 4:
-                title += str(MONTH_APRIL[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 5:
-                title += str(MONTH_MAY[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 6:
-                title += str(MONTH_JUNE[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 7:
-                title += str(MONTH_JULY[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 8:
-                title += str(MONTH_AUG[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 9:
-                title += MONTH_SEP[current_day]
-                title += "</strong>"
-                return title
-            if current_month == 10:
-                title += str(MONTH_OCT[current_day])
-                title += '</strong>'
-                return title
-            if current_month == 11:
-                title += str(MONTH_NOV[current_day])
-                title += "</strong>"
-                return title
-            if current_month == 12:
-                title += str(MONTH_DEC[current_day])
-                title += "</strong>"
-                return title
-            else:
-                return "<strong>Сегодня никаких праздников и мероприятий</strong>"
+            month_dict = {1: MONTH_JAN,
+                          2: MONTH_FEB,
+                          3: MONTH_MARCH,
+                          4: MONTH_APRIL,
+                          5: MONTH_MAY,
+                          6: MONTH_JUNE,
+                          7: MONTH_JULY,
+                          8: MONTH_AUG,
+                          9: MONTH_SEP,
+                          10: MONTH_OCT,
+                          11: MONTH_NOV,
+                          12: MONTH_DEC}
+            month = month_dict[current_month]
+            title += str(month[current_day])
+            title += "</strong>"
+            return title
         except KeyError:
             return "<strong>Сегодня никаких праздников и мероприятий</strong>"
 
