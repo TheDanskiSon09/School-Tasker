@@ -1228,22 +1228,9 @@ class ManageSchoolTasksAddDetails(Screen):
                                   "декабрь": 12,
                                   "декабря": 12
                                   }
-                    day_limit = {1: 31,
-                                 2: 29,
-                                 3: 31,
-                                 4: 30,
-                                 5: 31,
-                                 6: 30,
-                                 7: 31,
-                                 8: 31,
-                                 9: 30,
-                                 10: 31,
-                                 11: 30,
-                                 12: 31
-                                 }
                     self.task_month = month_dict[self.task_month]
-                    max_month_day = day_limit[self.task_month]
-                    if int(self.task_day) > max_month_day:
+                    if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
+                                                                    int(self.task_month))[1]):
                         self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
                                             "дней!\nНа какое число дано задание?</strong>")
                         self.staged_twice = False
