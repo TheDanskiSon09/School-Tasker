@@ -1,4 +1,5 @@
 # School Tasker
+## About
 School Tasker is a homework planner bot made on the Russian Telegram platform. The features of the bot are as follows:
 * Recognizing users as regular and administrators in order to correctly assign appropriate powers to everyone;
 * Automatic filtering of tasks by time to make reading tasks easier;
