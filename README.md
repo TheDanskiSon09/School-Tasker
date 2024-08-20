@@ -1,4 +1,8 @@
 # School Tasker
+<p align="center">
+    <img src="SchoolTasker_header.jpg" alt="School Tasker" style="max-width: 100%; width: 1000px">
+</p>
+
 ## About
 School Tasker is a homework planner bot made on the Russian Telegram platform. The features of the bot are as follows:
 * Recognizing users as regular and administrators in order to correctly assign appropriate powers to everyone;
@@ -23,8 +27,5 @@ School Tasker is a homework planner bot made on the Russian Telegram platform. T
 <p></p>You can see a full license here (https://github.com/TheDanskiSon09/School-Tasker/blob/main/LICENSE.md) </p>
 
 ## Contact
-<p>Meet the School Tasker bot: https://t.me/SchoolTaskerbot</p>
-<p>If you have any ideas and wishes or you encounter with problems when working with the bot, you can always contact the developer to make School Tasker better: https://t.me/TheDanskiSon09</p>
-<p align="center">
-    <img src="SchoolTasker_header.jpg" alt="School Tasker" style="max-width: 100%; width: 1000px">
-</p>
+<p>Meet the School Tasker bot : https://t.me/SchoolTaskerbot</p>
+<p>If you have any ideas and wishes or you encounter with problems when working with the bot, you can always contact the developer to make School Tasker better : https://t.me/TheDanskiSon09</p>
