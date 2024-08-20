@@ -144,7 +144,7 @@ async def logger_alert(user: list, status: str, formattered_index):
     LOGGER.info(title)
 
 
-async def update_month(check_day, task_month):
+async def get_user_month(month):
     months_dict = {
         1: ["Январь", "Января", "январь", "января"],
         2: ["Февраль", "Февраля", "февраль", "февраля"],
@@ -162,12 +162,17 @@ async def update_month(check_day, task_month):
     for i in months_dict:
         month_list = months_dict[i]
         for a in month_list:
-            if a == task_month:
-                check_month = i
-                if check_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
-                    return check_month
-                else:
-                    return False
+            if a == month:
+                new_month = i
+                return new_month
+
+
+async def update_month(check_day, task_month):
+    check_month = await get_user_month(task_month)
+    if check_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
+        return check_month
+    else:
+        return False
 
 
 async def get_var_from_database(index, need_variable):
@@ -1171,25 +1176,7 @@ class ManageSchoolTasksAddDetails(Screen):
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                 if self.staged_once and self.staged_twice:
                     self.task_month = update.message.text
-                    months_dict = {
-                        1: ["Январь", "Января", "январь", "января"],
-                        2: ["Февраль", "Февраля", "февраль", "февраля"],
-                        3: ["Март", "Марта", "март", "марта"],
-                        4: ["Апрель", "Апреля", "апрель", "апреля"],
-                        5: ["Май", "Мая", "май", "мая"],
-                        6: ["Июнь", "Июня", "июнь", "июня"],
-                        7: ["Июль", "Июля", "июль", "июля"],
-                        8: ["Август", "Августа", "август", "августа"],
-                        9: ["Сентябрь", "Сентября", "сентябрь", "сентября"],
-                        10: ["Октябрь", "Октября", "октябрь", "октября"],
-                        11: ["Ноябрь", "Ноября", "ноябрь", "ноября"],
-                        12: ["Декабрь", "Декабря", "декабрь", "декабря"],
-                    }
-                    for i in months_dict:
-                        month_list = months_dict[i]
-                        for a in month_list:
-                            if a == self.task_month:
-                                self.task_month = int(i)
+                    self.task_month = int(await get_user_month(self.task_month))
                     try:
                         if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
                                                                         int(self.task_month))[1]):
