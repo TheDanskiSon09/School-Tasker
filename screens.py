@@ -1037,15 +1037,11 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         if database_length > 1:
             Global.index_store = database_length
             Global.index_store -= 1
-        cursor.execute('SELECT task_day FROM SchoolTasker WHERE item_index = ?',
+        cursor.execute("SELECT task_day, task_month FROM SchoolTasker WHERE item_index = ?",
                        (Global.index_store,))
-        connection.commit()
-        task_day = cursor.fetchone()
-        task_day = await get_clean_var(task_day, "to_string", False)
-        cursor.execute('SELECT task_month FROM SchoolTasker WHERE item_index = ?',
-                       (Global.index_store,))
-        connection.commit()
-        task_month = cursor.fetchone()
+        time = cursor.fetchall()
+        task_day = await get_clean_var(time, "to_string", False)
+        task_month = await get_clean_var(time, "to_string", False)
         task_month = await get_clean_var(task_month, "to_string", False)
         task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
@@ -1056,14 +1052,12 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         Global.last_month = task_month
         cursor.execute('SELECT item_name FROM SchoolTasker WHERE item_index = ?',
                        (Global.index_store,))
-        connection.commit()
         item_name = cursor.fetchone()
         item_name = await get_clean_var(item_name, "to_string", False)
         if item_name == "Английский язык" or item_name == "Информатика":
             item_name += " ("
             cursor.execute('SELECT group_number FROM SchoolTasker WHERE item_index = ?',
                            (Global.index_store,))
-            connection.commit()
             group_number = cursor.fetchone()
             group_number = await get_clean_var(group_number, "to_string", False)
             item_name += str(group_number)
@@ -1071,7 +1065,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         item_name += " : "
         cursor.execute('SELECT task_description FROM SchoolTasker WHERE item_index = ?',
                        (Global.index_store,))
-        connection.commit()
         task_description = cursor.fetchone()
         task_description = await get_clean_var(task_description, "to_string", False)
         task_description += "\n"
@@ -1227,7 +1220,10 @@ class ManageSchoolTasksAddDetails(Screen):
                                   "декабрь": 12,
                                   "декабря": 12
                                   }
-                    self.task_month = month_dict[self.task_month]
+                    try:
+                        self.task_month = month_dict[self.task_month]
+                    except KeyError:
+                        return await ManageSchoolTasksAddDetails().jump(update, context)
                     if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
                                                                     int(self.task_month))[1]):
                         self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
