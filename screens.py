@@ -167,6 +167,14 @@ async def get_user_month(month):
                 return new_month
 
 
+async def get_hypertime(month, day: int):
+    hypertime = str(month)
+    if day < 10:
+        hypertime += str(0)
+    hypertime += str(day)
+    return str(hypertime)
+
+
 async def update_month(check_day, task_month):
     check_month = await get_user_month(task_month)
     if check_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
@@ -974,13 +982,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
     global cursor
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
     database_length = Global.index_store
-    hypertime = str()
-    if int(task_month) < 10:
-        hypertime = str(0)
-    hypertime += str(task_month)
-    if task_day < 10:
-        hypertime += str(0)
-    hypertime += str(task_day)
+    hypertime = await get_hypertime(task_month, task_day)
     if database_length == 0:
         cursor.execute(
             'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
@@ -1229,13 +1231,7 @@ class ManageSchoolTasksAddDetails(Screen):
                         cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
                         task_month = cursor.fetchall()
                         task_month = await get_clean_var(task_month, "to_int", deletion_index)
-                        hypertime = str()
-                        if task_month < 10:
-                            hypertime += str(0)
-                        hypertime += str(task_month)
-                        if int(self.task_day) < 10:
-                            hypertime += str(0)
-                        hypertime += str(self.task_day)
+                        hypertime = await get_hypertime(task_month, self.task_day)
                         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                        (hypertime, formattered_index,))
                         connection.commit()
@@ -1265,13 +1261,7 @@ class ManageSchoolTasksAddDetails(Screen):
                     cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                    (check_month, formattered_index,))
                     connection.commit()
-                    hypertime = str()
-                    if int(check_month) < 10:
-                        hypertime += str(0)
-                    hypertime += str(check_month)
-                    if int(check_day) < 10:
-                        hypertime += str(0)
-                    hypertime += str(check_day)
+                    hypertime = await get_hypertime(self.task_month, int(self.task_day))
                     cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                    (hypertime, formattered_index,))
                     connection.commit()
