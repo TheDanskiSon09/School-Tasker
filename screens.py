@@ -1171,75 +1171,41 @@ class ManageSchoolTasksAddDetails(Screen):
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                 if self.staged_once and self.staged_twice:
                     self.task_month = update.message.text
-                    month_dict = {"Январь": 1,
-                                  "Января": 1,
-                                  "январь": 1,
-                                  "января": 1,
-                                  "Февраль": 2,
-                                  "Февраля": 2,
-                                  "февраль": 2,
-                                  "февраля": 2,
-                                  "Март": 3,
-                                  "Марта": 3,
-                                  "март": 3,
-                                  "марта": 3,
-                                  "Апрель": 4,
-                                  "Апреля": 4,
-                                  "апрель": 4,
-                                  "апреля": 4,
-                                  "Май": 5,
-                                  "Мая": 5,
-                                  "май": 5,
-                                  "мая": 5,
-                                  "Июнь": 6,
-                                  "Июня": 6,
-                                  "июнь": 6,
-                                  "июня": 6,
-                                  "Июль": 7,
-                                  "Июля": 7,
-                                  "июль": 7,
-                                  "июля": 7,
-                                  "Август": 8,
-                                  "Августа": 8,
-                                  "август": 8,
-                                  "августа": 8,
-                                  "Сентябрь": 9,
-                                  "Сентября": 9,
-                                  "сентябрь": 9,
-                                  "сентября": 9,
-                                  "Октябрь": 10,
-                                  "Октября": 10,
-                                  "октябрь": 10,
-                                  "октября": 10,
-                                  "Ноябрь": 11,
-                                  "Ноября": 11,
-                                  "ноябрь": 11,
-                                  "ноября": 11,
-                                  "Декабрь": 12,
-                                  "Декабря": 12,
-                                  "декабрь": 12,
-                                  "декабря": 12
-                                  }
+                    months_dict = {
+                        1: ["Январь", "Января", "январь", "января"],
+                        2: ["Февраль", "Февраля", "февраль", "февраля"],
+                        3: ["Март", "Марта", "март", "марта"],
+                        4: ["Апрель", "Апреля", "апрель", "апреля"],
+                        5: ["Май", "Мая", "май", "мая"],
+                        6: ["Июнь", "Июня", "июнь", "июня"],
+                        7: ["Июль", "Июля", "июль", "июля"],
+                        8: ["Август", "Августа", "август", "августа"],
+                        9: ["Сентябрь", "Сентября", "сентябрь", "сентября"],
+                        10: ["Октябрь", "Октября", "октябрь", "октября"],
+                        11: ["Ноябрь", "Ноября", "ноябрь", "ноября"],
+                        12: ["Декабрь", "Декабря", "декабрь", "декабря"],
+                    }
+                    for i in months_dict:
+                        month_list = months_dict[i]
+                        for a in month_list:
+                            if a == self.task_month:
+                                self.task_month = int(i)
                     try:
-                        self.task_month = month_dict[self.task_month]
-                    except KeyError:
+                        if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
+                                                                        int(self.task_month))[1]):
+                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
+                                                "дней!\nНа какое число дано задание?</strong>")
+                            self.staged_twice = False
+                            return await ManageSchoolTasksAddDetails().jump(update, context)
+                        else:
+                            self.staged_once = False
+                            self.staged_twice = False
+                            self.description = "<strong>Введите текст задания:</strong>"
+                            await add_task_school(update, context, self.task_item, self.task_description,
+                                                  self.group_number, self.task_day, self.task_month)
+                            self.is_adding_task = False
+                    except ValueError:
                         return await ManageSchoolTasksAddDetails().jump(update, context)
-                    if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
-                                                                    int(self.task_month))[1]):
-                        self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
-                                            "дней!\nНа какое число дано задание?</strong>")
-                        self.staged_twice = False
-                        return await ManageSchoolTasksAddDetails().jump(update, context)
-                    else:
-                        self.staged_once = False
-                        self.staged_twice = False
-                        self.description = "<strong>Введите текст задания:</strong>"
-                        success_add = True
-                        await add_task_school(update, context, self.task_item, self.task_description,
-                                              self.group_number, self.task_day, self.task_month)
-                    if not success_add:
-                        return await ManageSchoolTasksAddDetails().jump(update, context)
-                    self.is_adding_task = False
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
