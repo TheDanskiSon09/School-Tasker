@@ -230,11 +230,12 @@ async def get_multipy_async(index, title, return_value):
         task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
             if Global.open_date:
-                task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+                task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(
+                    task_month) + "</em>" + " :</strong>" + "\n"
             else:
                 task_time = ""
         else:
-            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+            task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(task_month) + "</em>" + " :</strong>" + "\n"
         Global.last_day = task_day
         Global.last_month = task_month
         cursor.execute('SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC')
@@ -301,7 +302,7 @@ async def check_tasks():
         if not out_of_data:
             task_day = str(task_day)
             task_month = await recognise_month(task_month)
-            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+            task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(task_month) + "</em>" + " :</strong>" + "\n"
             Global.last_day = task_day
             Global.last_month = task_month
             cursor.execute('SELECT item_name FROM SchoolTasker')
@@ -361,8 +362,8 @@ async def check_tasks():
 
 
 async def get_notification_title(task_item, task_description, group_number, task_day, task_month):
-    title = "На " + str(task_day)
-    add_month_txt = " " + str(task_month)
+    title = "На " + "<em>" + str(task_day)
+    add_month_txt = " " + str(task_month) + "</em>"
     title += str(add_month_txt)
     title += " было добавлено задание по "
     item_dict = {"Алгебра": "Алгебре",
