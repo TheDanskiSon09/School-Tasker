@@ -18,10 +18,7 @@ def main():
                             WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
                             ManageSchoolTasksChangeItem,
                             ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
-                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, ManageAdminUsersMain,
-                            ManageAdminUsersAdd, ManageAdminUsersAddConfirm, ManageAdminUsersRemove,
-                            ManageAdminUsersRemoveConfirm, UserWasMarkedAsAnonim, UserWasMarkedAsAdmin,
-                            ],
+                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber]
         },
     )
     app.run()
