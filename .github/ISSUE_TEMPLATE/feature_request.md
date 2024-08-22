@@ -1,7 +1,7 @@
 ---
 name: Feature request
 about: Suggest any ideas for School Tasker
-title: ''
+title: '[Idea]: '
 labels: enhancement
 assignees: TheDanskiSon09
 
