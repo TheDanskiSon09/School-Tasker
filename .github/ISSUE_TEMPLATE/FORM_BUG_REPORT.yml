@@ -1,0 +1,10 @@
+name: Bug report
+about: Create a bud report to help School Tasker improve
+title: '[Bug]: '
+labels: bug, help wanted, invalid
+assignees: TheDanskiSon09
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
