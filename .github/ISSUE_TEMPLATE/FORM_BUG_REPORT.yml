@@ -22,7 +22,6 @@ body:
       label: Please, send description and photo of bug
       description: Also tell us, what did you expect to happen?
       placeholder: Tell and show us what you see!
-      value: "A bug happened!"
     validations:
       required: true
   - type: checkboxes
