@@ -117,21 +117,11 @@ async def update_day(check_month, task_day):
 
 async def logger_alert(user: list, status: str, formattered_index):
     global cursor
-    cursor.execute("SELECT task_day FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_day = cursor.fetchall()
-    task_day = await get_clean_var(task_day, "to_string", False)
-    cursor.execute("SELECT task_month FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_month = cursor.fetchall()
-    task_month = await get_clean_var(task_month, "to_string", False)
-    cursor.execute("SELECT item_name FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    item_name = cursor.fetchall()
-    item_name = await get_clean_var(item_name, "to_string", False)
-    cursor.execute("SELECT group_number FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    group_number = cursor.fetchall()
-    group_number = await get_clean_var(group_number, "to_string", False)
-    cursor.execute("SELECT task_description FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_description = cursor.fetchall()
-    task_description = await get_clean_var(task_description, "to_string", False)
+    item_name = await get_var_from_database(formattered_index, "item_name", False)
+    task_description = await get_var_from_database(formattered_index, "task_description", False)
+    group_number = await get_var_from_database(formattered_index, "group_number", False)
+    task_day = await get_var_from_database(formattered_index, "task_day", False)
+    task_month = await get_var_from_database(formattered_index, "task_month", False)
     status_dict = {"add": "added",
                    "delete": "deleted",
                    "change": "changed"}
@@ -197,12 +187,14 @@ async def get_var_from_database(index, need_variable, order: bool):
                           "task_description": "SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC",
                           "task_day": "SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC",
                           "task_month": "SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC",
+                          "item_index": "SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC",
                           "database_length_SchoolTasker": "SELECT count(*) FROM SchoolTasker",
                           "database_length_Users": "SELECT count(*) FROM SchoolTasker"}
         title = variable_order[need_variable]
         cursor.execute(title)
         variable = cursor.fetchall()
-        if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
+        if (need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users"
+                or need_variable == "item_index"):
             variable = await get_clean_var(variable, "to_int", False)
             return int(variable)
         else:
@@ -882,14 +874,8 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         if database_length > 1:
             Global.index_store = database_length
             Global.index_store -= 1
-        cursor.execute("SELECT task_day FROM SchoolTasker WHERE item_index = ?",
-                       (Global.index_store,))
-        td_take = cursor.fetchone()
-        cursor.execute("SELECT task_month FROM SchoolTasker WHERE item_index = ?",
-                       (Global.index_store,))
-        tm_take = cursor.fetchone()
-        task_day = await get_clean_var(td_take, "to_string", False)
-        task_month = await get_clean_var(tm_take, "to_string", False)
+        task_day = await get_var_from_database(Global.index_store, "task_day", False)
+        task_month = await get_var_from_database(Global.index_store, "task_month", False)
         task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
             task_time = ""
@@ -897,23 +883,14 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             task_time = "На " + str(task_day) + " " + str(task_month) + " :" + "\n"
         Global.last_day = task_day
         Global.last_month = task_month
-        cursor.execute('SELECT item_name FROM SchoolTasker WHERE item_index = ?',
-                       (Global.index_store,))
-        item_name = cursor.fetchone()
-        item_name = await get_clean_var(item_name, "to_string", False)
+        item_name = await get_var_from_database(Global.index_store, "item_name", False)
         if item_name == "Английский язык" or item_name == "Информатика":
             item_name += " ("
-            cursor.execute('SELECT group_number FROM SchoolTasker WHERE item_index = ?',
-                           (Global.index_store,))
-            group_number = cursor.fetchone()
-            group_number = await get_clean_var(group_number, "to_string", False)
+            group_number = await get_var_from_database(Global.index_store, "group_number", False)
             item_name += str(group_number)
             item_name += "ая группа)"
         item_name += " : "
-        cursor.execute('SELECT task_description FROM SchoolTasker WHERE item_index = ?',
-                       (Global.index_store,))
-        task_description = cursor.fetchone()
-        task_description = await get_clean_var(task_description, "to_string", False)
+        task_description = await get_var_from_database(Global.index_store, "task_description", False)
         task_description += "\n"
         SchoolTasks.description += task_time + item_name + task_description
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
@@ -1039,9 +1016,7 @@ class ManageSchoolTasksAddDetails(Screen):
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
-                cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                formattered_index = cursor.fetchall()
-                formattered_index = await get_clean_var(formattered_index, "to_int", deletion_index)
+                formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                 await logger_alert([user.username, user.id], "change", formattered_index)
                 cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
                                (self.task_description, formattered_index,))
@@ -1055,23 +1030,17 @@ class ManageSchoolTasksAddDetails(Screen):
                     self.description = "На какой день дано задание?"
                     return await ManageSchoolTasksAddDetails().jump(update, context)
                 if not self.task_day < 1 and not self.task_day >= 32:
-                    cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
-                    check_month = cursor.fetchall()
-                    check_month = await get_clean_var(check_month, "to_int", deletion_index)
+                    check_month = await get_var_from_database(deletion_index, "task_month", True)
                     check_task_day = await update_day(check_month, self.task_day)
                     if check_task_day:
-                        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                        formattered_index = cursor.fetchall()
-                        formattered_index = await get_clean_var(formattered_index, "to_string", deletion_index)
+                        formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                         Global.is_changing_month = False
                         Global.is_changing_day = False
                         await logger_alert([user.username, user.id], "change", formattered_index)
                         cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
                                        (self.task_day, formattered_index,))
                         connection.commit()
-                        cursor.execute("SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC")
-                        task_month = cursor.fetchall()
-                        task_month = await get_clean_var(task_month, "to_int", deletion_index)
+                        task_month = await get_var_from_database(deletion_index, "task_month", True)
                         hypertime = await get_hypertime(task_month, self.task_day)
                         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                        (hypertime, formattered_index,))
@@ -1096,9 +1065,7 @@ class ManageSchoolTasksAddDetails(Screen):
                     self.description = "Введите текст задания:"
                     Global.is_changing_month = False
                     Global.is_changing_day = False
-                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                    formattered_index = cursor.fetchall()
-                    formattered_index = await get_clean_var(formattered_index, "to_string", deletion_index)
+                    formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                     await logger_alert([user.username, user.id], "change", formattered_index)
                     hypertime = await get_hypertime(check_month, int(check_day))
                     cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
@@ -1244,9 +1211,7 @@ class ManageSchoolTasksRemoveConfirm(Screen):
         Global.index_store -= 1
         task_index = _context.user_data['task_index']
         user = _update.effective_user
-        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-        formatted_index = cursor.fetchall()
-        formatted_index = await get_clean_var(formatted_index, "to_int", task_index)
+        formatted_index = await get_var_from_database(task_index, "item_index", True)
         await logger_alert([user.username, user.id], "delete", formatted_index)
         cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
         connection.commit()
@@ -1402,7 +1367,6 @@ class ManageSchoolTasksChangeMain(Screen):
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
-                cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime")
                 button_name = await get_button_title(task_index)
                 new_button = [Button(button_name, self.change_task,
                                      source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
@@ -1515,10 +1479,8 @@ class ManageSchoolTasksChangeItem(Screen):
         user = update.effective_user
         payload = json.loads(await self.get_payload(update, context))
         context.user_data['task_item'], context.user_data['task_index'] = payload['task_item'], payload['task_index']
-        cursor.execute("SELECT item_index from SchoolTasker ORDER BY hypertime ASC")
-        formattered_index = cursor.fetchall()
         index = int(context.user_data["task_index"])
-        formattered_index = await get_clean_var(formattered_index, "to_string", index)
+        formattered_index = await get_var_from_database(index, "item_index", True)
         await logger_alert([user.username, user.id], "change", formattered_index)
         cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
                        (context.user_data['task_item'], formattered_index,))
@@ -1597,9 +1559,7 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
     async def add_default_keyboard(self, _update, _context):
         self.deletion_index = _context.user_data['task_index']
         Global.is_changing_group_number = True
-        cursor.execute("SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC")
-        check_item = cursor.fetchall()
-        check_item = await get_clean_var(check_item, "to_string", self.deletion_index)
+        check_item = await get_var_from_database(self.deletion_index, "item_name", True)
         if check_item == "Английский язык":
             return [
                 [
