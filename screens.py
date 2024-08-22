@@ -189,32 +189,49 @@ async def update_month(check_day, task_month):
         return False
 
 
-async def get_var_from_database(index, need_variable):
+async def get_var_from_database(index, need_variable, order: bool):
     global cursor
-    variable_dict = {"item_name": "SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC",
-                     "group_number": "SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC",
-                     "task_description": "SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC",
-                     "task_day": "SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC",
-                     "task_month": "SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC",
-                     "database_length_SchoolTasker": "SELECT count(*) FROM SchoolTasker",
-                     "database_length_Users": "SELECT count(*) FROM SchoolTasker"}
-    title = variable_dict[need_variable]
-    cursor.execute(title)
-    variable = cursor.fetchall()
-    if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
-        variable = await get_clean_var(variable, "to_int", False)
-        return int(variable)
+    if order:
+        variable_order = {"item_name": "SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC",
+                          "group_number": "SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC",
+                          "task_description": "SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC",
+                          "task_day": "SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC",
+                          "task_month": "SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC",
+                          "database_length_SchoolTasker": "SELECT count(*) FROM SchoolTasker",
+                          "database_length_Users": "SELECT count(*) FROM SchoolTasker"}
+        title = variable_order[need_variable]
+        cursor.execute(title)
+        variable = cursor.fetchall()
+        if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
+            variable = await get_clean_var(variable, "to_int", False)
+            return int(variable)
+        else:
+            variable = await get_clean_var(variable, "to_string", index)
+            return str(variable)
     else:
-        variable = await get_clean_var(variable, "to_string", index)
-        return str(variable)
+        variable_select = {"item_name": "SELECT item_name FROM SchoolTasker WHERE item_index = ?",
+                           "group_number": "SELECT group_number FROM SchoolTasker WHERE item_index = ?",
+                           "task_description": "SELECT task_description FROM SchoolTasker WHERE item_index = ?",
+                           "task_day": "SELECT task_day FROM SchoolTasker WHERE item_index = ?",
+                           "task_month": "SELECT task_month FROM SchoolTasker WHERE item_index = ?",
+                           }
+        title = variable_select[need_variable]
+        cursor.execute(title, (index,))
+        variable = cursor.fetchone()
+        if need_variable == "item_name" or need_variable == "task_description":
+            variable = await get_clean_var(variable, "to_string", False)
+            return str(variable)
+        else:
+            variable = await get_clean_var(variable, "to_int", False)
+            return int(variable)
 
 
 async def get_button_title(index):
-    item_name = await get_var_from_database(index, "item_name")
+    item_name = await get_var_from_database(index, "item_name", True)
     if item_name == "Английский язык" or item_name == "Информатика":
-        group_number = await get_var_from_database(index, "group_number")
+        group_number = await get_var_from_database(index, "group_number", True)
         item_name += " (" + str(group_number) + "ая группа) "
-    task_description = await get_var_from_database(index, "task_description")
+    task_description = await get_var_from_database(index, "task_description", True)
     title = item_name
     title += " : "
     title += task_description
@@ -223,14 +240,10 @@ async def get_button_title(index):
 
 async def get_multipy_async(index, title, return_value):
     out_of_data = False
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
-    cursor.execute('SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC')
-    task_day = cursor.fetchall()
-    task_day = await get_clean_var(task_day, "to_string", index)
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
+    task_day = await get_var_from_database(index, "task_day", True)
     check_day = int(task_day)
-    cursor.execute('SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC')
-    task_month = cursor.fetchall()
-    task_month = await get_clean_var(task_month, "to_int", index)
+    task_month = await get_var_from_database(index, "task_month", True)
     check_month = int(task_month)
     if not out_of_data:
         task_month_int = int(task_month)
@@ -249,24 +262,19 @@ async def get_multipy_async(index, title, return_value):
                          + " :</strong>" + "\n")
         Global.last_day = task_day
         Global.last_month = task_month
-        cursor.execute('SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC')
-        item_name = cursor.fetchall()
+        item_name = await get_var_from_database(index, "item_name", True)
         a = "<strong>"
         b = item_name
-        b = await get_clean_var(b, "to_string", index)
         item_name = str(a) + str(b)
         if item_name == "<strong>Английский язык" or item_name == "<strong>Информатика":
             item_name += " ("
-            cursor.execute('SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC')
-            group_number = cursor.fetchall()
-            group_number = await get_clean_var(group_number, "to_string", index)
-            item_name += group_number
+            group_number = await get_var_from_database(index, "group_number", True)
+            item_name += str(group_number)
             item_name += "ая группа)"
         item_name += " : </strong>"
-        cursor.execute('SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC')
-        task_description = cursor.fetchall()
+        task_description = await get_var_from_database(index, "task_description", True)
         a = "<strong>"
-        b = await get_clean_var(task_description, "to_string", index)
+        b = task_description
         c = "</strong>\n"
         task_description = str(a) + str(b) + str(c)
         title += task_time + item_name + task_description
@@ -289,7 +297,7 @@ async def get_multipy_async(index, title, return_value):
 async def check_tasks():
     global cursor
     out_of_data = False
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     database_length = Global.index_store
     title = str()
     if database_length == 0:
@@ -677,7 +685,7 @@ class ManageSchoolTasksMain(Screen):
     @register_button_handler
     async def go_to_remove_tasks_screen(self, _update, _context):
         global cursor
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0:
             ManageSchoolTasksRemove.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
         if database_length < 1:
@@ -687,7 +695,7 @@ class ManageSchoolTasksMain(Screen):
     @register_button_handler
     async def go_to_change_tasks_screen(self, _update, _context):
         global cursor
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0:
             ManageSchoolTasksChangeMain.description = "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
         if database_length < 1:
@@ -812,7 +820,7 @@ class ManageSchoolTasksAddGroupNumber(Screen):
 
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month):
     global cursor
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     database_length = Global.index_store
     hypertime = await get_hypertime(task_month, task_day)
     if database_length == 0:
@@ -824,7 +832,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             (task_item, Global.index_store, group_number, task_description, task_day,
              task_month, hypertime,))
         connection.commit()
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
         database_length = Global.index_store
         if database_length == 1:
             Global.index_store = 0
@@ -867,7 +875,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
             (task_item, Global.index_store, group_number, task_description, task_day,
              task_month, hypertime,))
         connection.commit()
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
         database_length = Global.index_store
         if database_length == 1:
             Global.index_store = 0
@@ -1077,11 +1085,9 @@ class ManageSchoolTasksAddDetails(Screen):
                     return await ManageSchoolTasksAddDetails().jump(update, context)
             if Global.is_changing_month:
                 self.task_month = update.message.text
-                cursor.execute("SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC")
-                check_day = cursor.fetchall()
-                check_day = await get_clean_var(check_day, "to_int", deletion_index)
+                check_day = await get_var_from_database(deletion_index, "task_day", True)
                 try:
-                    check_month = await update_month(check_day, self.task_month)
+                    check_month = await update_month(int(check_day), self.task_month)
                 except TypeError:
                     return await ManageSchoolTasksAddDetails().jump(update, context)
                 if check_month:
@@ -1094,7 +1100,7 @@ class ManageSchoolTasksAddDetails(Screen):
                     formattered_index = cursor.fetchall()
                     formattered_index = await get_clean_var(formattered_index, "to_string", deletion_index)
                     await logger_alert([user.username, user.id], "change", formattered_index)
-                    hypertime = await get_hypertime(check_month, check_day)
+                    hypertime = await get_hypertime(check_month, int(check_day))
                     cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                    (check_month, formattered_index,))
                     cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
@@ -1109,24 +1115,14 @@ class ManageSchoolTasksAddDetails(Screen):
 async def send_update_notification(update, context):
     global users_cursor
     user = update.effective_user
-    formattered_index = await get_var_from_database(False, "database_length_SchoolTasker")
+    formattered_index = await get_var_from_database(False, "database_length_SchoolTasker", True)
     formattered_index -= 1
     await logger_alert([user.username, user.id], "add", formattered_index)
-    cursor.execute("SELECT item_name FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_item = cursor.fetchall()
-    task_item = await get_clean_var(task_item, "to_string", False)
-    cursor.execute("SELECT task_description FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_description = cursor.fetchall()
-    task_description = await get_clean_var(task_description, "to_string", False)
-    cursor.execute("SELECT group_number FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    group_number = cursor.fetchall()
-    group_number = await get_clean_var(group_number, "to_string", False)
-    cursor.execute("SELECT task_day FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_day = cursor.fetchall()
-    task_day = await get_clean_var(task_day, "to_string", False)
-    cursor.execute("SELECT task_month FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
-    task_month = cursor.fetchall()
-    task_month = await get_clean_var(task_month, "to_string", False)
+    task_item = await get_var_from_database(formattered_index, "item_name", False)
+    task_description = await get_var_from_database(formattered_index, "task_description", False)
+    group_number = await get_var_from_database(formattered_index, "group_number", False)
+    task_day = await get_var_from_database(formattered_index, "task_day", False)
+    task_month = await get_var_from_database(formattered_index, "task_month", False)
     task_month_int = int(task_month)
     task_month = await recognise_month(task_month)
     id_result = []
@@ -1179,7 +1175,7 @@ class ManageSchoolTasksRemove(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
@@ -1209,7 +1205,7 @@ class ManageSchoolTasksRemove(Screen):
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
         if database_length < 1:
@@ -1257,7 +1253,7 @@ class ManageSchoolTasksRemoveConfirm(Screen):
         cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
                        (formatted_index,))
         connection.commit()
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker")
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
         database_length = Global.index_store
         title = str()
         if database_length == 1:
@@ -1308,7 +1304,7 @@ class TaskWasRemoved(Screen):
     description = "✅<strong>Задание успешно удалено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0:
             return [
                 [
@@ -1343,9 +1339,7 @@ class ManageSchoolTasksChangeBase(Screen):
     async def add_default_keyboard(self, _update, _context):
         global cursor
         check_index = _context.user_data["task_index"]
-        cursor.execute("SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC")
-        check_item = cursor.fetchall()
-        check_item = await get_clean_var(check_item, "to_string", check_index)
+        check_item = await get_var_from_database(check_index, "item_name", True)
         keyboard = [
             [
                 Button("Предмет", self.change_school_item,
@@ -1404,7 +1398,7 @@ class ManageSchoolTasksChangeMain(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         keyboard = []
         if not database_length > 99:
             for task_index in range(database_length):
@@ -1430,7 +1424,7 @@ class ManageSchoolTasksChangeMain(Screen):
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
-        database_length = await get_var_from_database(None, "database_length_SchoolTasker")
+        database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0 and not database_length > 99:
             return "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
         if database_length < 1:
