@@ -1,4 +1,4 @@
-name: Bug report
+name: Bug report template
 description: Create a bud report to help School Tasker improve
 title: '[Bug]: '
 labels: ["bug", "help wanted", "invalid"]
