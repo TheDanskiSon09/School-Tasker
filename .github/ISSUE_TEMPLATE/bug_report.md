@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Create a bud report to help School Tasker improve
-title: ''
+title: '[Bug]: '
 labels: bug, help wanted, invalid
 assignees: TheDanskiSon09
 
