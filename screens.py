@@ -10,7 +10,7 @@ from hammett.core.mixins import StartMixin
 import settings
 import sqlite3
 from constants import *
-from datetime import datetime
+from datetime import datetime, date
 import calendar
 from time import gmtime, strftime
 from random import randint
@@ -49,6 +49,12 @@ class Global:
     is_changing_day = False
     is_changing_month = False
     is_changing_group_number = False
+
+
+async def get_week_day(task_month_int: int, task_day: int):
+    week_day = date(datetime.now().year, task_month_int, task_day)
+    week_day_new = WEEK_DAYS[week_day.weekday()]
+    return str(week_day_new)
 
 
 async def get_clean_var(var, new_var_type: str, index: int):
@@ -227,15 +233,20 @@ async def get_multipy_async(index, title, return_value):
     task_month = await get_clean_var(task_month, "to_int", index)
     check_month = int(task_month)
     if not out_of_data:
+        task_month_int = int(task_month)
         task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month:
             if Global.open_date:
-                task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(
-                    task_month) + "</em>" + " :</strong>" + "\n"
+                week_day = await get_week_day(task_month_int, int(task_day))
+                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                    task_month) + "</em>"
+                             + " :</strong>" + "\n")
             else:
                 task_time = ""
         else:
-            task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(task_month) + "</em>" + " :</strong>" + "\n"
+            week_day = await get_week_day(task_month_int, int(task_day))
+            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
+                         + " :</strong>" + "\n")
         Global.last_day = task_day
         Global.last_month = task_month
         cursor.execute('SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC')
@@ -302,7 +313,9 @@ async def check_tasks():
         if not out_of_data:
             task_day = str(task_day)
             task_month = await recognise_month(task_month)
-            task_time = "<strong>На " + "<em>" + str(task_day) + " " + str(task_month) + "</em>" + " :</strong>" + "\n"
+            week_day = await get_week_day(int(check_month), int(check_day))
+            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
+                         + ":</strong>" + "\n")
             Global.last_day = task_day
             Global.last_month = task_month
             cursor.execute('SELECT item_name FROM SchoolTasker')
@@ -361,8 +374,9 @@ async def check_tasks():
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
-async def get_notification_title(task_item, task_description, group_number, task_day, task_month):
-    title = "На " + "<em>" + str(task_day)
+async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month):
+    week_day = await get_week_day(task_month_int, int(task_day))
+    title = "На " + "<em>" + week_day + ", " + str(task_day)
     add_month_txt = " " + str(task_month) + "</em>"
     title += str(add_month_txt)
     title += " было добавлено задание по "
@@ -436,6 +450,8 @@ class MainMenu(StartMixin, Screen):
         return config
 
     async def add_default_keyboard(self, _update, _context):
+        # new_date = date(2024, 2, 28)
+        # print(new_date.weekday())
         user = _update.effective_user
         if user.id == settings.DIRECTOR_ID:
             return [
@@ -1111,6 +1127,7 @@ async def send_update_notification(update, context):
     cursor.execute("SELECT task_month FROM SchoolTasker WHERE item_index = ?", (formattered_index,))
     task_month = cursor.fetchall()
     task_month = await get_clean_var(task_month, "to_string", False)
+    task_month_int = int(task_month)
     task_month = await recognise_month(task_month)
     id_result = []
     notification_image = ""
@@ -1124,7 +1141,7 @@ async def send_update_notification(update, context):
         send_name = await get_clean_var(send_name, "to_string", False)
         notification_title = "<strong>Здравствуйте, " + str(send_name) + "!" + "\n"
         notification_title += await get_notification_title(task_item, task_description,
-                                                           group_number, task_day, task_month)
+                                                           group_number, task_day, task_month_int, task_month)
         config = RenderConfig(
             cover=notification_image,
             chat_id=user_id,
