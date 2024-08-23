@@ -460,81 +460,41 @@ class MainMenu(StartMixin, Screen):
         return config
 
     async def add_default_keyboard(self, _update, _context):
-        # new_date = date(2024, 2, 28)
-        # print(new_date.weekday())
-        user = _update.effective_user
-        if user.id == settings.DIRECTOR_ID:
-            return [
-                [
-                    Button('Зайти в задачник📓', self.school_tasks,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
-                ],
-                [
-                    Button('Внести изменения в задачник🔧', ManageSchoolTasksMain,
-                           hiders=Hider(ONLY_FOR_ADMIN),
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                # [
-                #     Button('Внести изменения в список администраторов👥', ManageAdminUsersMain,
-                #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                # ],
-                [
-                    Button('Настройки⚙', Options,
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                [
-                    Button('Что нового сегодня?✨', WhatsNew,
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                [
-                    Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
-                           source_type=SourcesTypes.URL_SOURCE_TYPE),
-                ],
-                [
-                    Button('Наш новостной журнал📰', 'https://t.me/SchoolTaskerNews',
-                           source_type=SourcesTypes.URL_SOURCE_TYPE),
-                ]
-            ]
+        return [
+            [
+                Button('Зайти в задачник📓', self.school_tasks,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
+            ],
+            [
+                Button('Внести изменения в задачник🔧', ManageSchoolTasksMain,
+                       hiders=Hider(ONLY_FOR_ADMIN),
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE),
+            ],
             # [
-            # Button('🎸 Hammett Home Page', 'https://github.com/cusdeb-com/hammett',
-            # source_type=SourcesTypes.URL_SOURCE_TYPE),
+            #     Button('Внести изменения в список администраторов👥', ManageAdminUsersMain,
+            #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             # ],
-        else:
-            return [
-                [
-                    Button('Зайти в задачник📓', self.school_tasks,
-                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
-                ],
-                [
-                    Button('Внести изменения в задачник🔧', ManageSchoolTasksMain,
-                           hiders=Hider(ONLY_FOR_ADMIN),
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                # [
-                #     Button('Внести изменения в список администраторов👥', ManageAdminUsersMain,
-                #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                # ],
-                [
-                    Button('Настройки⚙', Options,
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                [
-                    Button('Что нового сегодня?✨', WhatsNew,
-                           source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-                ],
-                [
-                    Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
-                           source_type=SourcesTypes.URL_SOURCE_TYPE),
-                ],
-                [
-                    Button('Наш новостной журнал📰', 'https://t.me/SchoolTaskerNews',
-                           source_type=SourcesTypes.URL_SOURCE_TYPE),
-                ],
-                # [
-                # Button('🎸 Hammett Home Page', 'https://github.com/cusdeb-com/hammett',
-                # source_type=SourcesTypes.URL_SOURCE_TYPE),
-                # ],
+            [
+                Button('Настройки⚙', Options,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE),
+            ],
+            [
+                Button('Что нового сегодня?✨', WhatsNew,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE),
+            ],
+            [
+                Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE),
+            ],
+            [
+                Button('Наш новостной журнал📰', 'https://t.me/SchoolTaskerNews',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE),
             ]
+        ]
+        # [
+        # Button('🎸 Hammett Home Page', 'https://github.com/cusdeb-com/hammett',
+        # source_type=SourcesTypes.URL_SOURCE_TYPE),
+        # ],
 
     @register_button_handler
     async def school_tasks(self, update, context):
