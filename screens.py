@@ -4,6 +4,7 @@ import logging
 import telegram.error
 from hammett.core import Button, Screen
 from hammett.core.constants import RenderConfig, SourcesTypes
+from hammett.core.exceptions import PayloadIsEmpty
 from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
@@ -193,8 +194,7 @@ async def get_var_from_database(index, need_variable, order: bool):
         title = variable_order[need_variable]
         cursor.execute(title)
         variable = cursor.fetchall()
-        if (need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users"
-                or need_variable == "item_index"):
+        if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
             variable = await get_clean_var(variable, "to_int", False)
             return int(variable)
         else:
@@ -404,13 +404,23 @@ async def get_notification_title(task_item, task_description, group_number, task
     return title
 
 
+async def get_payload(self, update, context, key_id: str, value: str):
+    try:
+        payload = json.loads(await self.get_payload(update, context))
+    except PayloadIsEmpty:
+        payload = context.user_data.get(key_id)
+    else:
+        context.user_data[key_id] = payload
+    context.user_data[value] = payload[value]
+
+
 class NotificationScreen(Screen):
     description = "ERROR 451!"
 
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button("⬅В главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)
+                Button("⬅На главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)
             ]
         ]
 
@@ -568,7 +578,7 @@ class WhatsNew(Screen):
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button("⬅Вернуться в главный экран", MainMenu, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+                Button("⬅Вернуться на главный экран", MainMenu, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ]
         ]
 
@@ -620,7 +630,7 @@ class Options(Screen):
                        payload=json.dumps({"index": notification_permission}))
             ],
             [
-                Button('⬅️ Вернуться в главный экран', MainMenu,
+                Button('⬅️ Вернуться на главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
         ]
@@ -628,8 +638,8 @@ class Options(Screen):
     @register_button_handler
     async def edit_notification_permission(self, _update, _context):
         global users_cursor
-        payload = json.loads(await self.get_payload(_update, _context))
-        notification_permission = payload["index"]
+        await get_payload(self, _update, _context, "options", "index")
+        notification_permission = _context.user_data['index']
         if notification_permission == 1:
             notification_permission = 0
         else:
@@ -645,7 +655,7 @@ class SchoolTasks(Screen):
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button('⬅️ Вернуться в главный экран', MainMenu,
+                Button('⬅️ Вернуться на главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
         ]
@@ -669,7 +679,7 @@ class ManageSchoolTasksMain(Screen):
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
             ],
             [
-                Button('⬅️ Вернуться в главный экран', MainMenu,
+                Button('⬅️ Вернуться на главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
         ]
@@ -759,8 +769,7 @@ class ManageSchoolTasksAdd(Screen):
 
     @register_button_handler
     async def get_school_item(self, update, context):
-        payload = json.loads(await self.get_payload(update, context))
-        context.user_data['task_item'] = payload['task_item']
+        await get_payload(self, update, context, 'add_task_item', 'task_item')
         if context.user_data["task_item"] == "Английский язык" or context.user_data["task_item"] == "Информатика":
             return await ManageSchoolTasksAddGroupNumber().goto(update, context)
         else:
@@ -801,8 +810,7 @@ class ManageSchoolTasksAddGroupNumber(Screen):
 
     @register_button_handler
     async def get_group_number(self, _update, _context):
-        payload = json.loads(await self.get_payload(_update, _context))
-        _context.user_data["group_number"] = payload["group_number"]
+        await get_payload(self, _update, _context, 'add_task_group_number', 'group_number')
         return await ManageSchoolTasksAddDetails().goto(_update, _context)
 
     @register_button_handler
@@ -918,7 +926,7 @@ class TaskWasChanged(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
             [
-                Button('⬅️ В главный экран', MainMenu,
+                Button('⬅️ На главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -1130,7 +1138,7 @@ class TaskWasAdded(Screen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
             [
-                Button('⬅️ В главный экран', MainMenu,
+                Button('⬅️ На главный экран', MainMenu,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ],
         ]
@@ -1184,9 +1192,7 @@ class ManageSchoolTasksRemove(Screen):
 
     @register_button_handler
     async def remove_task(self, update, context):
-        payload = json.loads(await self.get_payload(update, context))
-
-        context.user_data['task_index'] = payload['task_index']
+        await get_payload(self, update, context, 'delete_task', 'task_index')
         return await ManageSchoolTasksRemoveConfirm().goto(update, context)
 
 
@@ -1281,7 +1287,7 @@ class TaskWasRemoved(Screen):
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
                 [
-                    Button('⬅️ В главный экран', MainMenu,
+                    Button('⬅️ На главный экран', MainMenu,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE)
                 ],
             ]
@@ -1292,7 +1298,7 @@ class TaskWasRemoved(Screen):
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
                 ],
                 [
-                    Button('⬅️ В главный экран', MainMenu,
+                    Button('⬅️ На главный экран', MainMenu,
                            source_type=SourcesTypes.GOTO_SOURCE_TYPE)
                 ],
             ]
@@ -1352,9 +1358,7 @@ class ManageSchoolTasksChangeBase(Screen):
 
     @register_button_handler
     async def change_school_item(self, update, context):
-        payload = json.loads(await self.get_payload(update, context))
-
-        context.user_data['task_index'] = payload['task_index']
+        await get_payload(self, update, context, 'change_task_item', 'task_index')
         return await ManageSchoolTasksChangeItem().goto(update, context)
 
 
@@ -1400,9 +1404,7 @@ class ManageSchoolTasksChangeMain(Screen):
 
     @register_button_handler
     async def change_task(self, update, context):
-        payload = json.loads(await self.get_payload(update, context))
-
-        context.user_data['task_index'] = payload['task_index']
+        await get_payload(self, update, context, 'change_task', 'task_index')
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
@@ -1477,13 +1479,13 @@ class ManageSchoolTasksChangeItem(Screen):
     async def change_item(self, update, context):
         global cursor
         user = update.effective_user
-        payload = json.loads(await self.get_payload(update, context))
-        context.user_data['task_item'], context.user_data['task_index'] = payload['task_item'], payload['task_index']
+        await get_payload(self, update, context, 'change_task_item', 'task_index')
+        await get_payload(self, update, context, 'change_task_item', 'task_item')
         index = int(context.user_data["task_index"])
-        formattered_index = await get_var_from_database(index, "item_index", True)
-        await logger_alert([user.username, user.id], "change", formattered_index)
+        new_index = await get_var_from_database(index, "item_index", True)
+        await logger_alert([user.username, user.id], "change", int(new_index))
         cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
-                       (context.user_data['task_item'], formattered_index,))
+                       (context.user_data['task_item'], int(new_index),))
         connection.commit()
         return await TaskWasChanged().goto(update, context)
 
@@ -1495,8 +1497,7 @@ class ManageSchoolTasksChangeTask(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         Global.is_changing_task_description = True
-        payload = json.loads(await self.get_payload(_update, _context))
-        _context.user_data["deletion_index"] = payload["deletion_index"]
+        await get_payload(self, _update, _context, 'change_task_description', 'deletion_index')
         return [
             [
                 Button("⬅Назад", self.go_back,
@@ -1516,8 +1517,7 @@ class ManageSchoolTasksChangeDay(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         Global.is_changing_day = True
-        payload = json.loads(await self.get_payload(_update, _context))
-        _context.user_data["deletion_index"] = payload["deletion_index"]
+        await get_payload(self, _update, _context, 'change_task_day', 'deletion_index')
         return [
             [
                 Button("⬅Назад", self.go_back,
@@ -1537,8 +1537,7 @@ class ManageSchoolTasksChangeMonth(Screen):
 
     async def add_default_keyboard(self, _update, _context):
         Global.is_changing_month = True
-        payload = json.loads(await self.get_payload(_update, _context))
-        _context.user_data["deletion_index"] = payload["deletion_index"]
+        await get_payload(self, _update, _context, 'change_task_month', 'deletion_index')
         return [
             [
                 Button("⬅Назад", self.go_back,
@@ -1594,11 +1593,8 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
     @register_button_handler
     async def change_group_number(self, update, context):
         user = update.effective_user
-        payload = json.loads(await self.get_payload(update, context))
-        context.user_data["group_number"] = payload['group_number']
-        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-        formattered_index = cursor.fetchall()
-        formattered_index = await get_clean_var(formattered_index, "to_int", self.deletion_index)
+        await get_payload(self, update, context, 'change_task_group_number', 'group_number')
+        formattered_index = await get_var_from_database(self.deletion_index, "item_index", True)
         await logger_alert([user.username, user.id], "change", formattered_index)
         cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                        (context.user_data["group_number"], formattered_index,))
