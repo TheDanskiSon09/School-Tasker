@@ -29,3 +29,4 @@ School Tasker is a homework planner bot made on the Russian Telegram platform. T
 ## Contact
 <p>Meet the School Tasker bot : https://t.me/SchoolTaskerbot</p>
 <p>If you have any ideas and wishes or you encounter with problems when working with the bot, you can always contact the developer to make School Tasker better : https://t.me/TheDanskiSon09</p>
+<p>Follow all the news in our channel : https://t.me/SchoolTaskerNews</p>
