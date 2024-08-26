@@ -1,7 +1,7 @@
 # TODO
 ## Primary Tasks
 - [ ] Add optimization
-  - [ ] Fix on add school task and mailing users functions speed
+  - [x] Fix on add school task and mailing users functions speed
 - [ ] Work on the logo
 - [ ] Work on the README.md file
 - [x] Add LOGGER print after user interaction with database
