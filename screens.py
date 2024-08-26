@@ -459,10 +459,6 @@ class MainMenu(StartMixin, Screen):
                        hiders=Hider(ONLY_FOR_ADMIN),
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
-            # [
-            #     Button('Внести изменения в список администраторов👥', ManageAdminUsersMain,
-            #            source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-            # ],
             [
                 Button('Настройки⚙', Options,
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
@@ -480,10 +476,6 @@ class MainMenu(StartMixin, Screen):
                        source_type=SourcesTypes.URL_SOURCE_TYPE),
             ]
         ]
-        # [
-        # Button('🎸 Hammett Home Page', 'https://github.com/cusdeb-com/hammett',
-        # source_type=SourcesTypes.URL_SOURCE_TYPE),
-        # ],
 
     @register_button_handler
     async def school_tasks(self, update, context):
