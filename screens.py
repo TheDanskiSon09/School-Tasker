@@ -386,7 +386,6 @@ async def get_notification_title(task_item, task_description, group_number, task
     add_month_txt = " " + str(task_month) + "</em>"
     title += str(add_month_txt)
     status = status_dict[stat]
-    # title += " было добавлено задание по "
     title += " было " + status + " задание по "
     add_task_txt = ITEM_DICT[task_item]
     title += add_task_txt
@@ -1048,7 +1047,8 @@ async def send_update_notification(update, context, status, index):
     task_month = await recognise_month(task_month)
     id_result = []
     notification_image = ""
-    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
+    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
+                                       (user.id,)):
         id_row = list(id_row)
         id_row = int(id_row[0])
         id_result.append(id_row)
