@@ -220,7 +220,9 @@ async def get_var_from_database(index, need_variable, order: bool):
 
 async def get_button_title(index):
     item_name = await get_var_from_database(index, "item_name", True)
-    if item_name == "Английский язык" or item_name == "Информатика":
+    emoji = ITEM_EMOJI[item_name]
+    item_name = str(emoji) + str(item_name)
+    if item_name == "🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "💻Информатика":
         group_number = await get_var_from_database(index, "group_number", True)
         item_name += " (" + str(group_number) + "ая группа) "
     task_description = await get_var_from_database(index, "task_description", True)
@@ -245,20 +247,21 @@ async def get_multipy_async(index, title, return_value):
                 week_day = await get_week_day(task_month_int, int(task_day))
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + "</em>"
-                             + " :</strong>" + "\n")
+                             + " :</strong>" + "\n\n")
             else:
                 task_time = ""
         else:
             week_day = await get_week_day(task_month_int, int(task_day))
             task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
-                         + " :</strong>" + "\n")
+                         + " :</strong>" + "\n\n")
         Global.last_day = task_day
         Global.last_month = task_month
         item_name = await get_var_from_database(index, "item_name", True)
         a = "<strong>"
         b = item_name
-        item_name = str(a) + str(b)
-        if item_name == "<strong>Английский язык" or item_name == "<strong>Информатика":
+        emoji = str(ITEM_EMOJI[b])
+        item_name = str(a) + str(emoji) + str(b)
+        if item_name == "<strong>🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "<strong>💻Информатика":
             item_name += " ("
             group_number = await get_var_from_database(index, "group_number", True)
             item_name += str(group_number)
@@ -267,7 +270,7 @@ async def get_multipy_async(index, title, return_value):
         task_description = await get_var_from_database(index, "task_description", True)
         a = "<strong>"
         b = task_description
-        c = "</strong>\n"
+        c = "</strong>\n\n"
         task_description = str(a) + str(b) + str(c)
         title += task_time + item_name + task_description
         if return_value == 0:
@@ -315,15 +318,16 @@ async def check_tasks():
             task_month = await recognise_month(task_month)
             week_day = await get_week_day(int(check_month), int(check_day))
             task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
-                         + ":</strong>" + "\n")
+                         + ":</strong>" + "\n\n")
             Global.last_day = task_day
             Global.last_month = task_month
             cursor.execute('SELECT item_name FROM SchoolTasker')
             item_name = cursor.fetchall()
             a = "<strong>"
             b = await get_clean_var(item_name, "to_string", False)
-            item_name = str(a) + str(b)
-            if item_name == "<strong>Английский язык" or item_name == "<strong>Информатика":
+            emoji = str(ITEM_EMOJI[b])
+            item_name = str(a) + str(emoji) + str(b)
+            if item_name == "<strong>🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "<strong>💻Информатика":
                 item_name += " ("
                 cursor.execute('SELECT group_number FROM SchoolTasker')
                 group_number = cursor.fetchall()
@@ -380,24 +384,9 @@ async def get_notification_title(task_item, task_description, group_number, task
     add_month_txt = " " + str(task_month) + "</em>"
     title += str(add_month_txt)
     title += " было добавлено задание по "
-    item_dict = {"Алгебра": "Алгебре",
-                 "Английский язык": "Английскому языку",
-                 "Биология": "Биологии",
-                 "География": "Географии",
-                 "Геометрия": "Геометрии",
-                 "Информатика": "Информатике",
-                 "История": "Истории",
-                 "Литература": "Литературе",
-                 "Музыка": "Музыке",
-                 "Обществознание": "Обществознанию",
-                 "ОБЖ": "ОБЖ",
-                 "Русский язык": "Русскому языку",
-                 "Технология": "Технологии",
-                 "Физика": "Физике",
-                 "Химия": "Химии"}
-    add_task_txt = item_dict[task_item]
+    add_task_txt = ITEM_DICT[task_item]
     title += add_task_txt
-    if add_task_txt == "Английскому языку" or add_task_txt == "Информатике":
+    if add_task_txt == "🇬🇧󠁧󠁢󠁧󠁢Английскому языку" or add_task_txt == "💻Информатике":
         group_txt = " (" + str(group_number) + "ая " + "группа) "
         title += group_txt
     title += ": " + task_description + "</strong>"
