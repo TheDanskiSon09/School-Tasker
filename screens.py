@@ -378,12 +378,16 @@ async def check_tasks():
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
-async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month):
+async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month, stat):
+    status_dict = {"change": "изменено",
+                   "add": "добавлено"}
     week_day = await get_week_day(task_month_int, int(task_day))
     title = "На " + "<em>" + week_day + ", " + str(task_day)
     add_month_txt = " " + str(task_month) + "</em>"
     title += str(add_month_txt)
-    title += " было добавлено задание по "
+    status = status_dict[stat]
+    # title += " было добавлено задание по "
+    title += " было " + status + " задание по "
     add_task_txt = ITEM_DICT[task_item]
     title += add_task_txt
     if add_task_txt == "🇬🇧󠁧󠁢󠁧󠁢Английскому языку" or add_task_txt == "💻Информатике":
@@ -966,10 +970,10 @@ class ManageSchoolTasksAddDetails(Screen):
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
                 formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                await logger_alert([user.username, user.id], "change", formattered_index)
                 cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
                                (self.task_description, formattered_index,))
                 connection.commit()
+                await send_update_notification(update, context, False, "change", int(formattered_index))
                 return await TaskWasChanged().jump(update, context)
             if Global.is_changing_day:
                 self.task_day = update.message.text
@@ -985,7 +989,6 @@ class ManageSchoolTasksAddDetails(Screen):
                         formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                         Global.is_changing_month = False
                         Global.is_changing_day = False
-                        await logger_alert([user.username, user.id], "change", formattered_index)
                         cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
                                        (self.task_day, formattered_index,))
                         connection.commit()
@@ -994,6 +997,7 @@ class ManageSchoolTasksAddDetails(Screen):
                         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                        (hypertime, formattered_index,))
                         connection.commit()
+                        await send_update_notification(update, context, False, "change", int(formattered_index))
                         return await TaskWasChanged().jump(update, context)
                     else:
                         self.description = "На какой день дано задание?"
@@ -1015,30 +1019,28 @@ class ManageSchoolTasksAddDetails(Screen):
                     Global.is_changing_month = False
                     Global.is_changing_day = False
                     formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                    await logger_alert([user.username, user.id], "change", formattered_index)
                     hypertime = await get_hypertime(check_month, int(check_day))
                     cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                    (check_month, formattered_index,))
                     cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                    (hypertime, formattered_index,))
                     connection.commit()
+                    await send_update_notification(update, context, False, "change", int(formattered_index))
                     return await TaskWasChanged().jump(update, context)
                 else:
                     self.description = "<strong>На какой месяц дано задание?</strong>"
                     return await ManageSchoolTasksAddDetails().jump(update, context)
 
 
-async def send_update_notification(update, context):
+async def send_update_notification(update, context, order, status, index):
     global users_cursor
     user = update.effective_user
-    formattered_index = await get_var_from_database(False, "database_length_SchoolTasker", True)
-    formattered_index -= 1
-    await logger_alert([user.username, user.id], "add", formattered_index)
-    task_item = await get_var_from_database(formattered_index, "item_name", False)
-    task_description = await get_var_from_database(formattered_index, "task_description", False)
-    group_number = await get_var_from_database(formattered_index, "group_number", False)
-    task_day = await get_var_from_database(formattered_index, "task_day", False)
-    task_month = await get_var_from_database(formattered_index, "task_month", False)
+    await logger_alert([user.username, user.id], status, index)
+    task_item = await get_var_from_database(index, "item_name", order)
+    task_description = await get_var_from_database(index, "task_description", order)
+    group_number = await get_var_from_database(index, "group_number", order)
+    task_day = await get_var_from_database(index, "task_day", order)
+    task_month = await get_var_from_database(index, "task_month", order)
     task_month_int = int(task_month)
     task_month = await recognise_month(task_month)
     id_result = []
@@ -1053,7 +1055,7 @@ async def send_update_notification(update, context):
         send_name = await get_clean_var(send_name, "to_string", False)
         notification_title = "<strong>Здравствуйте, " + str(send_name) + "!" + "\n"
         notification_title += await get_notification_title(task_item, task_description,
-                                                           group_number, task_day, task_month_int, task_month)
+                                                           group_number, task_day, task_month_int, task_month, status)
         config = RenderConfig(
             cover=notification_image,
             chat_id=user_id,
@@ -1068,7 +1070,9 @@ class TaskWasAdded(Screen):
     description = "✅<strong>Задание успешно добавлено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
-        await send_update_notification(_update, _context)
+        index = await get_var_from_database(False, "database_length_SchoolTasker", True)
+        index -= 1
+        await send_update_notification(_update, _context, False, "add", index)
         return [
             [
                 Button('⬅️ В меню редактора', ManageSchoolTasksMain,
@@ -1419,15 +1423,14 @@ class ManageSchoolTasksChangeItem(Screen):
     @register_button_handler
     async def change_item(self, update, context):
         global cursor
-        user = update.effective_user
         await get_payload(self, update, context, 'change_task_item', 'task_index')
         await get_payload(self, update, context, 'change_task_item', 'task_item')
         index = int(context.user_data["task_index"])
         new_index = await get_var_from_database(index, "item_index", True)
-        await logger_alert([user.username, user.id], "change", int(new_index))
         cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
                        (context.user_data['task_item'], int(new_index),))
         connection.commit()
+        await send_update_notification(update, context, False, "change", int(new_index))
         return await TaskWasChanged().goto(update, context)
 
 
@@ -1533,13 +1536,12 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
 
     @register_button_handler
     async def change_group_number(self, update, context):
-        user = update.effective_user
         await get_payload(self, update, context, 'change_task_group_number', 'group_number')
         formattered_index = await get_var_from_database(self.deletion_index, "item_index", True)
-        await logger_alert([user.username, user.id], "change", formattered_index)
         cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                        (context.user_data["group_number"], formattered_index,))
         connection.commit()
+        await send_update_notification(update, context, False, "change", int(formattered_index))
         return await TaskWasChanged().goto(update, context)
 
     @register_button_handler
