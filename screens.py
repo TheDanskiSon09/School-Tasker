@@ -848,6 +848,9 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         SchoolTasks.description += task_time + item_name + task_description
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
     ManageSchoolTasksAddDetails.group_number = 1
+    index = await get_var_from_database(False, "database_length_SchoolTasker", True)
+    index -= 1
+    await send_update_notification(_update, _context, "add", index)
     return await TaskWasAdded().jump(_update, _context)
 
 
@@ -1070,9 +1073,6 @@ class TaskWasAdded(Screen):
     description = "✅<strong>Задание успешно добавлено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
-        index = await get_var_from_database(False, "database_length_SchoolTasker", True)
-        index -= 1
-        await send_update_notification(_update, _context, "add", index)
         return [
             [
                 Button('⬅️ В меню редактора', ManageSchoolTasksMain,
