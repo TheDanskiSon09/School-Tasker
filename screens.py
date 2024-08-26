@@ -846,7 +846,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         task_description += "\n"
         SchoolTasks.description += task_time + item_name + task_description
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
-    ManageSchoolTasksAddDetails.group_number = 1
     index = await get_var_from_database(False, "database_length_SchoolTasker", True)
     index -= 1
     await send_update_notification(_update, _context, "add", index)
@@ -919,16 +918,19 @@ class ManageSchoolTasksAddDetails(Screen):
     async def set_details(self, update, context):
         user = update.effective_user
         try:
-            self.group_number = context.user_data['group_number']
-        except KeyError:
-            self.group_number = 1
-        try:
             deletion_index = context.user_data['deletion_index']
         except KeyError:
             deletion_index = int()
         if str(user.id) in settings.ADMIN_GROUP:
             if self.is_adding_task:
                 self.task_item = context.user_data['task_item']
+                try:
+                    if self.task_item == "Английский язык" or self.task_item == "Информатика":
+                        self.group_number = context.user_data['group_number']
+                    else:
+                        self.group_number = 1
+                except KeyError:
+                    self.group_number = 1
                 if not self.staged_once and not self.staged_twice:
                     self.task_description = update.message.text
                     self.description = "<strong>На какое число задано задание?</strong>"
