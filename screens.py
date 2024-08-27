@@ -1429,7 +1429,7 @@ class ManageSchoolTasksChangeItem(Screen):
         global cursor
         database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
         check_db = int(context.user_data['database_length'])
-        if check_db > database_length:
+        if check_db != database_length:
             return await TaskCantBeChanged().goto(update, context)
         else:
             await get_payload(self, update, context, 'change_task_item', 'task_index')
