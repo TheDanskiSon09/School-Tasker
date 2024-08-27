@@ -447,19 +447,11 @@ class MainMenu(StartMixin, Screen):
         ),
     }
 
-    #
-    # Private methods
-    #
-
     async def _get_user_status(self, user):
         if str(user.id) in settings.ADMIN_GROUP:
             return self.admin_status
         else:
             return self.anonymous_status
-
-    #
-    # Public methods
-    #
 
     async def get_config(self, update, _context, **_kwargs):
         global users_cursor
