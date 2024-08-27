@@ -765,7 +765,6 @@ class ManageSchoolTasksAddGroupNumber(Screen):
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month):
     global cursor
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-    database_length = Global.index_store
     hypertime = await get_hypertime(task_month, task_day)
     cursor.execute(
         'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
@@ -775,14 +774,14 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         (task_item, Global.index_store, group_number, task_description, task_day,
          task_month, hypertime,))
     connection.commit()
+    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
+    database_length = Global.index_store
+    if database_length == 1:
+        Global.index_store = 0
+    if database_length > 1:
+        Global.index_store = database_length
+        Global.index_store -= 1
     if database_length == 0:
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        database_length = Global.index_store
-        if database_length == 1:
-            Global.index_store = 0
-        if database_length > 1:
-            Global.index_store = database_length
-            Global.index_store -= 1
         cursor.execute('SELECT task_day FROM SchoolTasker')
         task_day = cursor.fetchall()
         task_day = await get_clean_var(task_day, "to_string", False)
@@ -811,13 +810,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         SchoolTasks.description = task_time + item_name + task_description
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
     elif database_length > 0:
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        database_length = Global.index_store
-        if database_length == 1:
-            Global.index_store = 0
-        if database_length > 1:
-            Global.index_store = database_length
-            Global.index_store -= 1
         task_day = await get_var_from_database(Global.index_store, "task_day", False)
         task_month = await get_var_from_database(Global.index_store, "task_month", False)
         task_month = await recognise_month(task_month)
