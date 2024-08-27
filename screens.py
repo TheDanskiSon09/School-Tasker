@@ -421,6 +421,22 @@ class NewsNotificationScreen(Screen):
     description = "_"
 
 
+class TaskCantBeChanged(Screen):
+    description = "<strong>Извините, но я не могу выполнить Ваш запрос - пожалуйста, повторите попытку</strong>"
+
+    async def add_default_keyboard(self, update, context):
+        return [
+            [
+                Button("🔄Повторить попытку", ManageSchoolTasksChangeMain,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅Назад", ManageSchoolTasksMain,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+            ]
+        ]
+
+
 class MainMenu(StartMixin, Screen):
     admin_status = 'Администратор'
     anonymous_status = 'Обычный пользователь'
@@ -1305,7 +1321,8 @@ class ManageSchoolTasksChangeMain(Screen):
                 button_name = await get_button_title(task_index)
                 new_button = [Button(button_name, self.change_task,
                                      source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                                     payload=json.dumps({'task_index': task_index}))]
+                                     payload=json.dumps({'task_index': task_index,
+                                                         'database_length': database_length}))]
                 keyboard.append(new_button)
             exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
                                   source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
@@ -1336,6 +1353,7 @@ class ManageSchoolTasksChangeMain(Screen):
     @register_button_handler
     async def change_task(self, update, context):
         await get_payload(self, update, context, 'change_task', 'task_index')
+        await get_payload(self, update, context, 'change_task', 'database_length')
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
@@ -1409,15 +1427,20 @@ class ManageSchoolTasksChangeItem(Screen):
     @register_button_handler
     async def change_item(self, update, context):
         global cursor
-        await get_payload(self, update, context, 'change_task_item', 'task_index')
-        await get_payload(self, update, context, 'change_task_item', 'task_item')
-        index = int(context.user_data["task_index"])
-        new_index = await get_var_from_database(index, "item_index", True)
-        cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
-                       (context.user_data['task_item'], int(new_index),))
-        connection.commit()
-        await send_update_notification(update, context, "change", int(new_index))
-        return await TaskWasChanged().goto(update, context)
+        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+        check_db = int(context.user_data['database_length'])
+        if check_db > database_length:
+            return await TaskCantBeChanged().goto(update, context)
+        else:
+            await get_payload(self, update, context, 'change_task_item', 'task_index')
+            await get_payload(self, update, context, 'change_task_item', 'task_item')
+            index = int(context.user_data["task_index"])
+            new_index = await get_var_from_database(index, "item_index", True)
+            cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
+                           (context.user_data['task_item'], int(new_index),))
+            connection.commit()
+            await send_update_notification(update, context, "change", int(new_index))
+            return await TaskWasChanged().goto(update, context)
 
 
 class ManageSchoolTasksChangeTask(Screen):
