@@ -767,15 +767,15 @@ async def add_task_school(_update, _context, task_item, task_description, group_
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     database_length = Global.index_store
     hypertime = await get_hypertime(task_month, task_day)
+    cursor.execute(
+        'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
+        'hypertime)'
+        'VALUES'
+        '(?,?,?,?,?,?,?)',
+        (task_item, Global.index_store, group_number, task_description, task_day,
+         task_month, hypertime,))
+    connection.commit()
     if database_length == 0:
-        cursor.execute(
-            'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
-            'hypertime)'
-            'VALUES'
-            '(?,?,?,?,?,?,?)',
-            (task_item, Global.index_store, group_number, task_description, task_day,
-             task_month, hypertime,))
-        connection.commit()
         Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
         database_length = Global.index_store
         if database_length == 1:
@@ -811,14 +811,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         SchoolTasks.description = task_time + item_name + task_description
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
     elif database_length > 0:
-        cursor.execute(
-            'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
-            'hypertime)'
-            'VALUES'
-            '(?,?,?,?,?,?,?)',
-            (task_item, Global.index_store, group_number, task_description, task_day,
-             task_month, hypertime,))
-        connection.commit()
         Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
         database_length = Global.index_store
         if database_length == 1:
