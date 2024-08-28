@@ -1552,13 +1552,18 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
 
     @register_button_handler
     async def change_group_number(self, update, context):
-        await get_payload(self, update, context, 'change_task_group_number', 'group_number')
-        formattered_index = await get_var_from_database(self.deletion_index, "item_index", True)
-        cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
-                       (context.user_data["group_number"], formattered_index,))
-        connection.commit()
-        await send_update_notification(update, context, "change", int(formattered_index))
-        return await TaskWasChanged().goto(update, context)
+        check_db = int(context.user_data['database_length'])
+        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+        if check_db != database_length:
+            return await TaskCantBeChanged().goto(update, context)
+        else:
+            await get_payload(self, update, context, 'change_task_group_number', 'group_number')
+            formattered_index = await get_var_from_database(self.deletion_index, "item_index", True)
+            cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
+                           (context.user_data["group_number"], formattered_index,))
+            connection.commit()
+            await send_update_notification(update, context, "change", int(formattered_index))
+            return await TaskWasChanged().goto(update, context)
 
     @register_button_handler
     async def go_back(self, update, context):
