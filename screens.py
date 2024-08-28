@@ -965,12 +965,17 @@ class ManageSchoolTasksAddDetails(Screen):
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
-                formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
-                               (self.task_description, formattered_index,))
-                connection.commit()
-                await send_update_notification(update, context, "change", int(formattered_index))
-                return await TaskWasChanged().jump(update, context)
+                check_db = int(context.user_data['database_length'])
+                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+                if check_db != database_length:
+                    return await TaskCantBeChanged().goto(update, context)
+                else:
+                    formattered_index = await get_var_from_database(deletion_index, "item_index", True)
+                    cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
+                                   (self.task_description, formattered_index,))
+                    connection.commit()
+                    await send_update_notification(update, context, "change", int(formattered_index))
+                    return await TaskWasChanged().jump(update, context)
             if Global.is_changing_day:
                 self.task_day = update.message.text
                 try:
@@ -982,19 +987,24 @@ class ManageSchoolTasksAddDetails(Screen):
                     check_month = await get_var_from_database(deletion_index, "task_month", True)
                     check_task_day = await update_day(check_month, self.task_day)
                     if check_task_day:
-                        formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                        Global.is_changing_month = False
-                        Global.is_changing_day = False
-                        cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
-                                       (self.task_day, formattered_index,))
-                        connection.commit()
-                        task_month = await get_var_from_database(deletion_index, "task_month", True)
-                        hypertime = await get_hypertime(task_month, self.task_day)
-                        cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
-                                       (hypertime, formattered_index,))
-                        connection.commit()
-                        await send_update_notification(update, context, "change", int(formattered_index))
-                        return await TaskWasChanged().jump(update, context)
+                        check_db = int(context.user_data['database_length'])
+                        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+                        if check_db != database_length:
+                            return await TaskCantBeChanged().goto(update, context)
+                        else:
+                            formattered_index = await get_var_from_database(deletion_index, "item_index", True)
+                            Global.is_changing_month = False
+                            Global.is_changing_day = False
+                            cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
+                                           (self.task_day, formattered_index,))
+                            connection.commit()
+                            task_month = await get_var_from_database(deletion_index, "task_month", True)
+                            hypertime = await get_hypertime(task_month, self.task_day)
+                            cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
+                                           (hypertime, formattered_index,))
+                            connection.commit()
+                            await send_update_notification(update, context, "change", int(formattered_index))
+                            return await TaskWasChanged().jump(update, context)
                     else:
                         self.description = "На какой день дано задание?"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
@@ -1014,15 +1024,20 @@ class ManageSchoolTasksAddDetails(Screen):
                     self.description = "Введите текст задания:"
                     Global.is_changing_month = False
                     Global.is_changing_day = False
-                    formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                    hypertime = await get_hypertime(check_month, int(check_day))
-                    cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
+                    check_db = int(context.user_data['database_length'])
+                    database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+                    if check_db != database_length:
+                        return await TaskCantBeChanged().goto(update, context)
+                    else:
+                        formattered_index = await get_var_from_database(deletion_index, "item_index", True)
+                        hypertime = await get_hypertime(check_month, int(check_day))
+                        cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                    (check_month, formattered_index,))
-                    cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
+                        cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                    (hypertime, formattered_index,))
-                    connection.commit()
-                    await send_update_notification(update, context, "change", int(formattered_index))
-                    return await TaskWasChanged().jump(update, context)
+                        connection.commit()
+                        await send_update_notification(update, context, "change", int(formattered_index))
+                        return await TaskWasChanged().jump(update, context)
                 else:
                     self.description = "<strong>На какой месяц дано задание?</strong>"
                     return await ManageSchoolTasksAddDetails().jump(update, context)
