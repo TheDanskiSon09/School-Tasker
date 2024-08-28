@@ -1032,9 +1032,9 @@ class ManageSchoolTasksAddDetails(Screen):
                         formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                         hypertime = await get_hypertime(check_month, int(check_day))
                         cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
-                                   (check_month, formattered_index,))
+                                       (check_month, formattered_index,))
                         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
-                                   (hypertime, formattered_index,))
+                                       (hypertime, formattered_index,))
                         connection.commit()
                         await send_update_notification(update, context, "change", int(formattered_index))
                         return await TaskWasChanged().jump(update, context)
