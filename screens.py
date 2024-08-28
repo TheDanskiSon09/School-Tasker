@@ -424,7 +424,7 @@ class NewsNotificationScreen(Screen):
 class TaskCantBeChanged(Screen):
     description = "<strong>Извините, но я не могу выполнить Ваш запрос - пожалуйста, повторите попытку</strong>"
 
-    async def add_default_keyboard(self, update, context):
+    async def add_default_keyboard(self, _update, _context):
         return [
             [
                 Button("🔄Повторить попытку", ManageSchoolTasksChangeMain,
@@ -968,7 +968,7 @@ class ManageSchoolTasksAddDetails(Screen):
                 check_db = int(context.user_data['database_length'])
                 database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
                 if check_db != database_length:
-                    return await TaskCantBeChanged().goto(update, context)
+                    return await TaskCantBeChanged().jump(update, context)
                 else:
                     formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                     cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
@@ -978,20 +978,20 @@ class ManageSchoolTasksAddDetails(Screen):
                     return await TaskWasChanged().jump(update, context)
             if Global.is_changing_day:
                 self.task_day = update.message.text
-                try:
-                    self.task_day = int(self.task_day)
-                except ValueError:
-                    self.description = "На какой день дано задание?"
-                    return await ManageSchoolTasksAddDetails().jump(update, context)
-                if not self.task_day < 1 and not self.task_day >= 32:
-                    check_month = await get_var_from_database(deletion_index, "task_month", True)
-                    check_task_day = await update_day(check_month, self.task_day)
-                    if check_task_day:
-                        check_db = int(context.user_data['database_length'])
-                        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-                        if check_db != database_length:
-                            return await TaskCantBeChanged().goto(update, context)
-                        else:
+                check_db = int(context.user_data['database_length'])
+                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+                if check_db != database_length:
+                    return await TaskCantBeChanged().jump(update, context)
+                else:
+                    try:
+                        self.task_day = int(self.task_day)
+                    except ValueError:
+                        self.description = "На какой день дано задание?"
+                        return await ManageSchoolTasksAddDetails().jump(update, context)
+                    if not self.task_day < 1 and not self.task_day >= 32:
+                        check_month = await get_var_from_database(deletion_index, "task_month", True)
+                        check_task_day = await update_day(check_month, self.task_day)
+                        if check_task_day:
                             formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                             Global.is_changing_month = False
                             Global.is_changing_day = False
@@ -1005,30 +1005,30 @@ class ManageSchoolTasksAddDetails(Screen):
                             connection.commit()
                             await send_update_notification(update, context, "change", int(formattered_index))
                             return await TaskWasChanged().jump(update, context)
+                        else:
+                            self.description = "На какой день дано задание?"
+                            return await ManageSchoolTasksAddDetails().jump(update, context)
                     else:
                         self.description = "На какой день дано задание?"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
-                else:
-                    self.description = "На какой день дано задание?"
-                    return await ManageSchoolTasksAddDetails().jump(update, context)
             if Global.is_changing_month:
                 self.task_month = update.message.text
-                check_day = await get_var_from_database(deletion_index, "task_day", True)
-                try:
-                    check_month = await update_month(int(check_day), self.task_month)
-                except TypeError:
-                    return await ManageSchoolTasksAddDetails().jump(update, context)
-                if check_month:
-                    self.staged_once = False
-                    self.staged_twice = False
-                    self.description = "Введите текст задания:"
-                    Global.is_changing_month = False
-                    Global.is_changing_day = False
-                    check_db = int(context.user_data['database_length'])
-                    database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-                    if check_db != database_length:
-                        return await TaskCantBeChanged().goto(update, context)
-                    else:
+                check_db = int(context.user_data['database_length'])
+                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+                if check_db != database_length:
+                    return await TaskCantBeChanged().jump(update, context)
+                else:
+                    check_day = await get_var_from_database(deletion_index, "task_day", True)
+                    try:
+                        check_month = await update_month(int(check_day), self.task_month)
+                    except TypeError:
+                        return await ManageSchoolTasksAddDetails().jump(update, context)
+                    if check_month:
+                        self.staged_once = False
+                        self.staged_twice = False
+                        self.description = "Введите текст задания:"
+                        Global.is_changing_month = False
+                        Global.is_changing_day = False
                         formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                         hypertime = await get_hypertime(check_month, int(check_day))
                         cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
@@ -1038,9 +1038,9 @@ class ManageSchoolTasksAddDetails(Screen):
                         connection.commit()
                         await send_update_notification(update, context, "change", int(formattered_index))
                         return await TaskWasChanged().jump(update, context)
-                else:
-                    self.description = "<strong>На какой месяц дано задание?</strong>"
-                    return await ManageSchoolTasksAddDetails().jump(update, context)
+                    else:
+                        self.description = "<strong>На какой месяц дано задание?</strong>"
+                        return await ManageSchoolTasksAddDetails().jump(update, context)
 
 
 async def send_update_notification(update, context, status, index):
