@@ -52,6 +52,11 @@ class Global:
     is_changing_group_number = False
 
 
+class BaseScreen(Screen):
+    cache_covers = False
+    hide_keyboard = True
+
+
 async def get_week_day(task_month_int: int, task_day: int):
     week_day = date(datetime.now().year, task_month_int, task_day)
     week_day_new = WEEK_DAYS[week_day.weekday()]
@@ -415,7 +420,7 @@ async def get_payload(self, update, context, key_id: str, value: str):
     context.user_data[value] = payload[value]
 
 
-class NotificationScreen(Screen):
+class NotificationScreen(BaseScreen):
     description = "ERROR 451!"
 
     async def add_default_keyboard(self, _update, _context):
@@ -426,11 +431,11 @@ class NotificationScreen(Screen):
         ]
 
 
-class NewsNotificationScreen(Screen):
+class NewsNotificationScreen(BaseScreen):
     description = "_"
 
 
-class TaskCantBeChanged(Screen):
+class TaskCantBeChanged(BaseScreen):
     description = "<strong>Извините, но я не могу выполнить Ваш запрос - пожалуйста, повторите попытку</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -446,7 +451,7 @@ class TaskCantBeChanged(Screen):
         ]
 
 
-class MainMenu(StartMixin, Screen):
+class MainMenu(StartMixin, BaseScreen):
     admin_status = 'Администратор'
     anonymous_status = 'Обычный пользователь'
     text_map = {
@@ -533,7 +538,7 @@ class MainMenu(StartMixin, Screen):
         return await super().start(update, context)
 
 
-class WhatsNew(Screen):
+class WhatsNew(BaseScreen):
     description = "ERROR 451"
 
     async def add_default_keyboard(self, _update, _context):
@@ -569,7 +574,7 @@ class WhatsNew(Screen):
             return "<strong>Сегодня никаких праздников и мероприятий</strong>"
 
 
-class Options(Screen):
+class Options(BaseScreen):
     description = '<strong>Выберите подходящие для Вас параметры</strong>'
 
     async def add_default_keyboard(self, _update, _context):
@@ -612,7 +617,7 @@ class Options(Screen):
         return await self.goto(_update, _context)
 
 
-class SchoolTasks(Screen):
+class SchoolTasks(BaseScreen):
     async def add_default_keyboard(self, _update, _context):
         return [
             [
@@ -622,7 +627,7 @@ class SchoolTasks(Screen):
         ]
 
 
-class ManageSchoolTasksMain(Screen):
+class ManageSchoolTasksMain(BaseScreen):
     description = '<strong>Какие изменения Вы хотите внести в задачник?</strong>'
 
     async def add_default_keyboard(self, _update, _context):
@@ -666,7 +671,7 @@ class ManageSchoolTasksMain(Screen):
         return await ManageSchoolTasksChangeMain().goto(_update, _context)
 
 
-class ManageSchoolTasksAdd(Screen):
+class ManageSchoolTasksAdd(BaseScreen):
     description = '<strong>По какому предмету будет задание?</strong>'
 
     async def add_default_keyboard(self, _update, _context):
@@ -737,7 +742,7 @@ class ManageSchoolTasksAdd(Screen):
             return await ManageSchoolTasksAddDetails().goto(update, context)
 
 
-class ManageSchoolTasksAddGroupNumber(Screen):
+class ManageSchoolTasksAddGroupNumber(BaseScreen):
     description = '<strong>Какой группе дано задание?</strong>'
 
     async def add_default_keyboard(self, _update, _context):
@@ -853,13 +858,13 @@ async def add_task_school(_update, _context, task_item, task_description, group_
     return await TaskWasAdded().jump(_update, _context)
 
 
-class ReplaceOrAddTask(Screen):
+class ReplaceOrAddTask(BaseScreen):
     description = ("Задание по данному предмету уже есть.\n"
                    "Вы действительно хотите добавить новое задание по данному предмету или хотите заменить "
                    "существующее задание на новое?")
 
 
-class TaskWasChanged(Screen):
+class TaskWasChanged(BaseScreen):
     description = "✅<strong>Задание успешно изменено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -879,7 +884,7 @@ class TaskWasChanged(Screen):
         ]
 
 
-class ManageSchoolTasksAddDetails(Screen):
+class ManageSchoolTasksAddDetails(BaseScreen):
     description = '<strong>Введите текст задания:</strong>'
     staged_once = False
     staged_twice = False
@@ -1084,7 +1089,7 @@ async def send_update_notification(update, context, status, index):
             await NotificationScreen().send(context, config=config, extra_data=extra_data)
 
 
-class TaskWasAdded(Screen):
+class TaskWasAdded(BaseScreen):
     description = "✅<strong>Задание успешно добавлено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -1104,7 +1109,7 @@ class TaskWasAdded(Screen):
         ]
 
 
-class ManageSchoolTasksRemove(Screen):
+class ManageSchoolTasksRemove(BaseScreen):
     global cursor
     tasks_numbers = []
 
@@ -1120,7 +1125,8 @@ class ManageSchoolTasksRemove(Screen):
                         Button(
                             str(button_name), self.remove_task,
                             source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                            payload=json.dumps({'task_index': task_index}),
+                            payload=json.dumps({'task_index': task_index,
+                                                'database_length': database_length}),
                         )
                     ]
                     keyboard.append(button_list)
@@ -1153,10 +1159,11 @@ class ManageSchoolTasksRemove(Screen):
     @register_button_handler
     async def remove_task(self, update, context):
         await get_payload(self, update, context, 'delete_task', 'task_index')
+        await get_payload(self, update, context, 'delete_task', 'database_length')
         return await ManageSchoolTasksRemoveConfirm().goto(update, context)
 
 
-class ManageSchoolTasksRemoveConfirm(Screen):
+class ManageSchoolTasksRemoveConfirm(BaseScreen):
     description = "<strong>Вы действительно хотите удалить данное задание?</strong>"
     deletion_index = 0
 
@@ -1174,64 +1181,68 @@ class ManageSchoolTasksRemoveConfirm(Screen):
     @register_button_handler
     async def delete_school_task(self, _update, _context):
         global cursor
-        Global.index_store -= 1
-        task_index = _context.user_data['task_index']
-        user = _update.effective_user
-        formatted_index = await get_var_from_database(task_index, "item_index", True)
-        await logger_alert([user.username, user.id], "delete", formatted_index)
-        cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
-        connection.commit()
-        cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
-                       (formatted_index,))
-        connection.commit()
-        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        database_length = Global.index_store
-        title = str()
-        if database_length == 1:
-            cursor.execute('SELECT task_day FROM SchoolTasker')
-            task_day = cursor.fetchall()
-            task_day = await get_clean_var(task_day, "to_string", False)
-            cursor.execute('SELECT task_month FROM SchoolTasker')
-            task_month = cursor.fetchall()
-            task_month = await get_clean_var(task_month, "to_string", False)
-            task_month = await recognise_month(task_month)
-            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
-            Global.last_day = task_day
-            Global.last_month = task_month
-            cursor.execute('SELECT item_name FROM SchoolTasker')
-            item_name = cursor.fetchall()
-            item_name = await get_clean_var(item_name, "to_string", False)
-            if item_name == "Английский язык" or item_name == "Информатика":
-                item_name += " ("
-                cursor.execute('SELECT group_number FROM SchoolTasker')
-                group_number = cursor.fetchall()
-                group_number = await get_clean_var(group_number, "to_string", False)
-                item_name += group_number
-                item_name += "ая группа)"
-            item_name += " : "
-            cursor.execute('SELECT task_description FROM SchoolTasker')
-            task_description = cursor.fetchall()
-            task_description = await get_clean_var(task_description, "to_string", False)
-            task_description += "\n"
-            title = task_time + item_name + task_description
-        elif database_length > 1:
-            n = int(0)
-            Global.open_date = True
-            for i in range(database_length):
-                title = await get_multipy_async(n, title, 0)
-                Global.open_date = False
-                n += 1
-        if not title:
-            SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+        check_task = await check_task_status(_context)
+        if not check_task:
+            return await TaskCantBeChanged().goto(_update, _context)
         else:
-            SchoolTasks.description = title
-        return await TaskWasRemoved().goto(_update, _context)
+            Global.index_store -= 1
+            task_index = _context.user_data['task_index']
+            user = _update.effective_user
+            formatted_index = await get_var_from_database(task_index, "item_index", True)
+            await logger_alert([user.username, user.id], "delete", formatted_index)
+            cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
+            connection.commit()
+            cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
+                           (formatted_index,))
+            connection.commit()
+            Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
+            database_length = Global.index_store
+            title = str()
+            if database_length == 1:
+                cursor.execute('SELECT task_day FROM SchoolTasker')
+                task_day = cursor.fetchall()
+                task_day = await get_clean_var(task_day, "to_string", False)
+                cursor.execute('SELECT task_month FROM SchoolTasker')
+                task_month = cursor.fetchall()
+                task_month = await get_clean_var(task_month, "to_string", False)
+                task_month = await recognise_month(task_month)
+                task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+                Global.last_day = task_day
+                Global.last_month = task_month
+                cursor.execute('SELECT item_name FROM SchoolTasker')
+                item_name = cursor.fetchall()
+                item_name = await get_clean_var(item_name, "to_string", False)
+                if item_name == "Английский язык" or item_name == "Информатика":
+                    item_name += " ("
+                    cursor.execute('SELECT group_number FROM SchoolTasker')
+                    group_number = cursor.fetchall()
+                    group_number = await get_clean_var(group_number, "to_string", False)
+                    item_name += group_number
+                    item_name += "ая группа)"
+                item_name += " : "
+                cursor.execute('SELECT task_description FROM SchoolTasker')
+                task_description = cursor.fetchall()
+                task_description = await get_clean_var(task_description, "to_string", False)
+                task_description += "\n"
+                title = task_time + item_name + task_description
+            elif database_length > 1:
+                n = int(0)
+                Global.open_date = True
+                for i in range(database_length):
+                    title = await get_multipy_async(n, title, 0)
+                    Global.open_date = False
+                    n += 1
+            if not title:
+                SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
+            else:
+                SchoolTasks.description = title
+            return await TaskWasRemoved().goto(_update, _context)
 
     async def get_description(self, _update, _context):
         return "<strong>Вы действительно хотите удалить данное задание?</strong>"
 
 
-class TaskWasRemoved(Screen):
+class TaskWasRemoved(BaseScreen):
     description = "✅<strong>Задание успешно удалено!</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -1264,7 +1275,7 @@ class TaskWasRemoved(Screen):
             ]
 
 
-class ManageSchoolTasksChangeBase(Screen):
+class ManageSchoolTasksChangeBase(BaseScreen):
     description = "<strong>Что Вы хотите изменить в данном задании?</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -1322,7 +1333,7 @@ class ManageSchoolTasksChangeBase(Screen):
         return await ManageSchoolTasksChangeItem().goto(update, context)
 
 
-class ManageSchoolTasksChangeMain(Screen):
+class ManageSchoolTasksChangeMain(BaseScreen):
     global cursor
 
     async def add_default_keyboard(self, _update, _context):
@@ -1370,7 +1381,7 @@ class ManageSchoolTasksChangeMain(Screen):
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
-class ManageSchoolTasksChangeItem(Screen):
+class ManageSchoolTasksChangeItem(BaseScreen):
     description = "<strong>По какому предмету будет задание?</strong>"
 
     async def add_default_keyboard(self, _update, _context):
@@ -1455,7 +1466,7 @@ class ManageSchoolTasksChangeItem(Screen):
             return await TaskWasChanged().goto(update, context)
 
 
-class ManageSchoolTasksChangeTask(Screen):
+class ManageSchoolTasksChangeTask(BaseScreen):
     description = "<strong>Введите текст задания:</strong>"
     current_index = int()
     task_description = str()
@@ -1476,7 +1487,7 @@ class ManageSchoolTasksChangeTask(Screen):
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
-class ManageSchoolTasksChangeDay(Screen):
+class ManageSchoolTasksChangeDay(BaseScreen):
     description = "<strong>На какой день дано задание?</strong>"
     task_description = str()
 
@@ -1496,7 +1507,7 @@ class ManageSchoolTasksChangeDay(Screen):
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
-class ManageSchoolTasksChangeMonth(Screen):
+class ManageSchoolTasksChangeMonth(BaseScreen):
     description = "<strong>На какой месяц дано задание?</strong>"
     task_description = str()
 
@@ -1516,7 +1527,7 @@ class ManageSchoolTasksChangeMonth(Screen):
         return await ManageSchoolTasksChangeBase().goto(update, context)
 
 
-class ManageSchoolTasksChangeGroupNumber(Screen):
+class ManageSchoolTasksChangeGroupNumber(BaseScreen):
     description = "<strong>Какой группе дано задание?</strong>"
     deletion_index = int()
 
