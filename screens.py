@@ -141,6 +141,15 @@ async def logger_alert(user: list, status: str, formattered_index):
     LOGGER.info(title)
 
 
+async def check_task_status(context):
+    check_db = int(context.user_data['database_length'])
+    database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
+    if check_db != database_length:
+        return False
+    else:
+        return True
+
+
 async def get_user_month(month):
     months_dict = {
         1: ["Январь", "Января", "январь", "января"],
@@ -965,9 +974,8 @@ class ManageSchoolTasksAddDetails(Screen):
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
                 Global.is_changing_task_description = False
-                check_db = int(context.user_data['database_length'])
-                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-                if check_db != database_length:
+                check_task = await check_task_status(context)
+                if not check_task:
                     return await TaskCantBeChanged().jump(update, context)
                 else:
                     formattered_index = await get_var_from_database(deletion_index, "item_index", True)
@@ -978,9 +986,8 @@ class ManageSchoolTasksAddDetails(Screen):
                     return await TaskWasChanged().jump(update, context)
             if Global.is_changing_day:
                 self.task_day = update.message.text
-                check_db = int(context.user_data['database_length'])
-                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-                if check_db != database_length:
+                check_task = await check_task_status(context)
+                if not check_task:
                     return await TaskCantBeChanged().jump(update, context)
                 else:
                     try:
@@ -1013,9 +1020,8 @@ class ManageSchoolTasksAddDetails(Screen):
                         return await ManageSchoolTasksAddDetails().jump(update, context)
             if Global.is_changing_month:
                 self.task_month = update.message.text
-                check_db = int(context.user_data['database_length'])
-                database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-                if check_db != database_length:
+                check_task = await check_task_status(context)
+                if not check_task:
                     return await TaskCantBeChanged().jump(update, context)
                 else:
                     check_day = await get_var_from_database(deletion_index, "task_day", True)
@@ -1434,9 +1440,8 @@ class ManageSchoolTasksChangeItem(Screen):
     @register_button_handler
     async def change_item(self, update, context):
         global cursor
-        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-        check_db = int(context.user_data['database_length'])
-        if check_db != database_length:
+        check_task = await check_task_status(context)
+        if not check_task:
             return await TaskCantBeChanged().goto(update, context)
         else:
             await get_payload(self, update, context, 'change_task_item', 'task_index')
@@ -1552,9 +1557,8 @@ class ManageSchoolTasksChangeGroupNumber(Screen):
 
     @register_button_handler
     async def change_group_number(self, update, context):
-        check_db = int(context.user_data['database_length'])
-        database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
-        if check_db != database_length:
+        check_task = await check_task_status(context)
+        if not check_task:
             return await TaskCantBeChanged().goto(update, context)
         else:
             await get_payload(self, update, context, 'change_task_group_number', 'group_number')
