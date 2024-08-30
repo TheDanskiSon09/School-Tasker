@@ -21,7 +21,7 @@ body:
     attributes:
       label: Please, send description and photo of bug
       description: Also tell us, what did you expect to happen?
-      placeholder: Tell and show us what you see!
+      placeholder: Tell and show us what you saw!
     validations:
       required: true
   - type: checkboxes
