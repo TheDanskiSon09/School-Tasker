@@ -689,14 +689,11 @@ class ManageSchoolTasksAdd(BaseScreen):
                 Button("География", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "География"})),
-                Button("Музыка", self.get_school_item,
-                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Музыка"})),
-            ],
-            [
                 Button("Геометрия", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "Геометрия"})),
+            ],
+            [
                 Button("Информатика", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "Информатика"})),
@@ -706,14 +703,17 @@ class ManageSchoolTasksAdd(BaseScreen):
                 Button("Литература", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "Литература"})),
+                Button("ОБЗР", self.get_school_item,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                       payload=json.dumps({'task_item': "ОБЗР"})),
                 Button("Обществознание", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "Обществознание"})),
             ],
             [
-                Button("ОБЖ", self.get_school_item,
+                Button("Решение задач повышенного уровня по алгебре", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "ОБЖ"})),
+                       payload=json.dumps({'task_item': "Решение задач повышенного уровня по алгебре"})),
                 Button("Русский язык", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({'task_item': "Русский язык"})),
@@ -1067,8 +1067,7 @@ async def send_update_notification(update, context, status, index):
     task_month = await recognise_month(task_month)
     id_result = []
     notification_image = ""
-    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
-                                       (user.id,)):
+    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
         id_row = list(id_row)
         id_row = int(id_row[0])
         id_result.append(id_row)
@@ -1400,14 +1399,11 @@ class ManageSchoolTasksChangeItem(BaseScreen):
                 Button("География", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"task_item": "География", "task_index": _context.user_data['task_index']})),
-                Button("Музыка", self.change_item,
-                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Музыка", "task_index": _context.user_data['task_index']})),
-            ],
-            [
                 Button("Геометрия", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"task_item": "Геометрия", "task_index": _context.user_data['task_index']})),
+            ],
+            [
                 Button("Информатика", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps(
@@ -1418,15 +1414,20 @@ class ManageSchoolTasksChangeItem(BaseScreen):
                 Button("Литература", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"task_item": "Литература", "task_index": _context.user_data['task_index']})),
+                Button("ОБЗР", self.change_item,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                       payload=json.dumps({"task_item": "ОБЗР", "task_index": _context.user_data['task_index']})),
                 Button("Обществознание", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps(
                            {"task_item": "Обществознание", "task_index": _context.user_data['task_index']})),
             ],
             [
-                Button("ОБЖ", self.change_item,
+                Button("Решение задач повышенного уровня по алгебре", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "ОБЖ", "task_index": _context.user_data['task_index']})),
+                       payload=json.dumps(
+                           {"task_item": "Решение задач повышенного уровня по алгебре",
+                            "task_index": _context.user_data['task_index']})),
                 Button("Русский язык", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps(
