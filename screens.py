@@ -750,20 +750,20 @@ class ManageSchoolTasksAddGroupNumber(BaseScreen):
         buttons = []
         if _context.user_data["task_item"] == "Английский язык":
             buttons.append(
-                Button('Группа 1️⃣(Мартиросян Астхик Нориковна)', self.get_group_number,
+                Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"group_number": 1})))
             buttons.append(
-                Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.get_group_number,
+                Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"group_number": 2})))
         if _context.user_data['task_item'] == "Информатика":
             buttons.append(
-                Button('Группа 1️⃣(Мамедова Наталья Николаевна)', self.get_group_number,
+                Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"group_number": 1})))
             buttons.append(
-                Button('Группа 2️⃣(Фокин Алексей Юрьевич)', self.get_group_number,
+                Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                        payload=json.dumps({"group_number": 2})))
         keyboard.append(buttons)
@@ -1539,10 +1539,10 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
         if check_item == "Английский язык":
             return [
                 [
-                    Button('Группа 1️⃣(Мартиросян Астхик Нориковна)', self.change_group_number,
+                    Button('Группа 1️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                            payload=json.dumps({"group_number": 1})),
-                    Button('Группа 2️⃣(Кравцова Анна Сергеевна)', self.change_group_number,
+                    Button('Группа 2️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                            payload=json.dumps({"group_number": 2}))
                 ],
@@ -1554,10 +1554,10 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
         if check_item == "Информатика":
             return [
                 [
-                    Button('Группа 1️⃣(Мамедова Наталья Николаевна)', self.change_group_number,
+                    Button('Группа 1️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                            payload=json.dumps({"group_number": 1})),
-                    Button('Группа 2️⃣(Фокин Алексей Юрьевич)', self.change_group_number,
+                    Button('Группа 2️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
                            payload=json.dumps({"group_number": 2}))
                 ],
