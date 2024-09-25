@@ -1,6 +1,7 @@
 # TODO
 ## Primary Tasks
 - [ ] Add optimization
+  - [ ] Fix on mailing users function speed
 - [x] Work on the logo
 - [x] Work on the README.md file
 - [x] Add LOGGER print after user interaction with database
