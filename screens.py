@@ -93,7 +93,7 @@ async def recognise_month(month):
 
 async def multipy_delete_task(by_day, n):
     if by_day:
-        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day < ? and task_month = ?",
+        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day <= ? and task_month = ?",
                        (datetime.now().day, datetime.now().month,))
     else:
         cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
