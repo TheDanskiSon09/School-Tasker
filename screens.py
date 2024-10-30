@@ -942,10 +942,17 @@ class ManageSchoolTasksAddDetails(BaseScreen):
 
     @register_button_handler
     async def return_back(self, _update, _context):
-        self.staged_once = False
-        self.staged_twice = False
-        self.is_adding_task = False
-        self.description = "<strong>Введите текст задания:</strong>"
+        if not self.staged_once and not self.staged_twice:
+            self.is_adding_task = False
+            return await ManageSchoolTasksAdd().goto(_update, _context)
+        if self.staged_once and not self.staged_twice:
+            self.staged_once = False
+            self.description = "<strong>Введите текст задания:</strong>"
+            return await ManageSchoolTasksAddDetails().jump(_update, _context)
+        if self.staged_once and self.staged_twice:
+            self.staged_twice = False
+            self.description = "<strong>На какое число задано задание?</strong>"
+            return await ManageSchoolTasksAddDetails().jump(_update, _context)
         if (Global.is_changing_day or Global.is_changing_month or Global.is_changing_task_description
                 or Global.is_changing_group_number):
             Global.is_changing_day = False
