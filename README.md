@@ -19,7 +19,7 @@ School Tasker is a homework planner bot made on the Russian Telegram platform. T
 <p>Over time, if this bot is in demand, School Tasker will be further developed and supplemented with new functionality</p>
 
 ## Authors
-<p>School Tasker is under development by Vladislav Skidan (https://github.com/TheDanskiSon09)</p>
+<p>School Tasker is under development by Vladislav Skidan (https://github.com/TheDanskiSon09), Mikhail Vokhshtein (https://github.com/bearshkaa) and Ivan Burygin (https://github.com/zors2299)</p>
 <p>School Tasker is using Hammett framework, written by cusdeb.com (https://github.com/cusdeb-com/hammett)</p>
 
 ## Licensing
