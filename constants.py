@@ -1,6 +1,5 @@
 from datetime import datetime
 
-REMOVE_SYMBOLS_ITEM = "(),'[]"
 ITEM_EMOJI = {"Алгебра": "🧮",
               "Английский язык": "🇬🇧󠁧󠁢󠁧󠁢",
               "Биология": "🧬",

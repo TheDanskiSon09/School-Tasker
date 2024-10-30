@@ -65,11 +65,19 @@ async def get_week_day(task_month_int: int, task_day: int):
 
 async def get_clean_var(var, new_var_type: str, index: int):
     var = str(var[index])
-    for symbol in REMOVE_SYMBOLS_ITEM:
-        var = var.replace(symbol, "")
     if new_var_type == "to_string":
+        if var[0] == "(":
+            var = var[1: -1]
+        if var[-1] == ',':
+            var = var[0: -1]
+        if var[0] == "'":
+            var = var[1: -1]
         return str(var)
     if new_var_type == "to_int":
+        if var[0] == "(":
+            var = var[1: -1]
+        if var[-1] == ',':
+            var = var[0: -1]
         return int(var)
 
 
@@ -89,6 +97,12 @@ async def recognise_month(month):
                   }
     month = month_dict[str(month)]
     return month
+
+
+async def recognise_n_tag(text: str):
+    if r"\n" in text:
+        text = text.replace(r"\n", "\n")
+    return text
 
 
 async def multipy_delete_task(by_day, n):
@@ -240,6 +254,7 @@ async def get_button_title(index):
         group_number = await get_var_from_database(index, "group_number", True)
         item_name += " (" + str(group_number) + "ая группа) "
     task_description = await get_var_from_database(index, "task_description", True)
+    task_description = await recognise_n_tag(task_description)
     title = item_name
     title += " : "
     title += task_description
@@ -282,6 +297,7 @@ async def get_multipy_async(index, title, return_value):
             item_name += "ая группа)"
         item_name += " : </strong>"
         task_description = await get_var_from_database(index, "task_description", True)
+        task_description = await recognise_n_tag(task_description)
         a = "<strong>"
         b = task_description
         c = "</strong>\n\n"
@@ -354,6 +370,7 @@ async def check_tasks():
             a = "<strong>"
             b = await get_clean_var(task_description, "to_string", False)
             task_description = str(a) + str(b)
+            task_description = await recognise_n_tag(task_description)
             task_description += "</strong>\n"
             title += task_time + item_name + task_description
             SchoolTasks.description = title
@@ -421,7 +438,7 @@ async def get_payload(self, update, context, key_id: str, value: str):
 
 
 class NotificationScreen(BaseScreen):
-    description = "ERROR 451!"
+    description = "_"
 
     async def add_default_keyboard(self, _update, _context):
         return [
@@ -493,12 +510,8 @@ class MainMenu(StartMixin, BaseScreen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
             [
-                Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
-                       source_type=SourcesTypes.URL_SOURCE_TYPE),
-            ],
-            [
-                Button('Наш новостной журнал📰', 'https://t.me/SchoolTaskerNews',
-                       source_type=SourcesTypes.URL_SOURCE_TYPE),
+                Button('Наши социальные сети📋', SocialMedia,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ]
         ]
 
@@ -538,8 +551,36 @@ class MainMenu(StartMixin, BaseScreen):
         return await super().start(update, context)
 
 
+class SocialMedia(BaseScreen):
+    description = '<strong>Подробнее о School Tasker Вы можете найти здесь:</strong>'
+
+    async def add_default_keyboard(self, _update, _context):
+        return [
+            [
+                Button('Наш новостной журнал📰', 'https://t.me/SchoolTaskerNews',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE)
+            ],
+            [
+                Button('Наш новостной журнал в ВК📰', 'https://vk.ru/schooltasker',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE)
+            ],
+            [
+                Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE)
+            ],
+            [
+                Button('Репозиторий бота в Github🤖', 'https://github.com/TheDanskiSon09/School-Tasker',
+                       source_type=SourcesTypes.URL_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅Вернуться на главный экран", MainMenu,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+            ]
+        ]
+
+
 class WhatsNew(BaseScreen):
-    description = "ERROR 451"
+    description = "_"
 
     async def add_default_keyboard(self, _update, _context):
         return [
@@ -858,12 +899,6 @@ async def add_task_school(_update, _context, task_item, task_description, group_
     return await TaskWasAdded().jump(_update, _context)
 
 
-class ReplaceOrAddTask(BaseScreen):
-    description = ("Задание по данному предмету уже есть.\n"
-                   "Вы действительно хотите добавить новое задание по данному предмету или хотите заменить "
-                   "существующее задание на новое?")
-
-
 class TaskWasChanged(BaseScreen):
     description = "✅<strong>Задание успешно изменено!</strong>"
 
@@ -910,6 +945,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
         self.staged_once = False
         self.staged_twice = False
         self.is_adding_task = False
+        self.description = "<strong>Введите текст задания:</strong>"
         if (Global.is_changing_day or Global.is_changing_month or Global.is_changing_task_description
                 or Global.is_changing_group_number):
             Global.is_changing_day = False

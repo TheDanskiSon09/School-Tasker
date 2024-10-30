@@ -11,10 +11,10 @@ def main():
         name,
         entry_point=MainMenu,
         states={
-            DEFAULT_STATE: [MainMenu, SchoolTasks, Options, ManageSchoolTasksMain,
+            DEFAULT_STATE: [MainMenu, SchoolTasks, SocialMedia, Options, ManageSchoolTasksMain,
                             ManageSchoolTasksAdd, ManageSchoolTasksAddDetails,
                             TaskWasAdded, ManageSchoolTasksRemove,
-                            ManageSchoolTasksRemoveConfirm, ReplaceOrAddTask, TaskWasChanged, NotificationScreen,
+                            ManageSchoolTasksRemoveConfirm, TaskWasChanged, NotificationScreen,
                             WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
                             ManageSchoolTasksChangeItem,
                             ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
