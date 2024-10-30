@@ -19,15 +19,15 @@ School Tasker is a homework planner bot made on the Russian Telegram platform. T
 <p>Over time, if this bot is in demand, School Tasker will be further developed and supplemented with new functionality</p>
 
 ## Authors
-<p>School Tasker is under development by Vladislav Skidan (https://github.com/TheDanskiSon09), Mikhail Vokhshtein (https://github.com/bearshkaa) and Ivan Burygin (https://github.com/zors2299)</p>
-<p>School Tasker is using Hammett framework, written by cusdeb.com (https://github.com/cusdeb-com/hammett)</p>
+<p>School Tasker is under development by <a href="https://github.com/TheDanskiSon09">Vladislav Skidan</a>, <a href="https://github.com/bearshkaa">Mikhail Vokhshtein</a> and <a href="https://github.com/zors2299">Ivan Burygin</a></p>
+<p>School Tasker is using <a href="https://github.com/cusdeb-com/hammett">Hammett framework</a>, written by cusdeb.com</p>
 
 ## Licensing
-<p>The code of School Tasker is licensed under the MIT License (https://en.wikipedia.org/wiki/MIT_License)</p>
-<p></p>You can see a full license here (https://github.com/TheDanskiSon09/School-Tasker/blob/main/LICENSE.md) </p>
+<p>The code of School Tasker is licensed under the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT License</a></p>
+<p>You can see a full license <a href="https://github.com/TheDanskiSon09/School-Tasker/blob/main/LICENSE.md">here</a></p>
 
 ## Contact
-<p>Meet the School Tasker bot : https://t.me/SchoolTaskerbot</p>
-<p>If you have any ideas and wishes or you encounter with problems when working with the bot, you can always contact the developer to make School Tasker better : https://t.me/TheDanskiSon09</p>
-<p>School Tasker news in Telegram: https://t.me/SchoolTaskerNews</p>
-<p>School Tasker news in VK: https://vk.com/schooltasker</p>
+<p>Meet the <a href='https://t.me/SchoolTaskerbot'>School Tasker bot</a></p>
+<p>If you have any ideas and wishes or you encounter with problems when working with the bot, you can always contact with us to make School Tasker better : https://t.me/TheDanskiSon09</p>
+<p>School Tasker news in <a href='https://t.me/SchoolTaskerNews'>Telegram</a></p>
+<p>School Tasker news in <a href='https://vk.com/schooltasker'>VK</a></p>
