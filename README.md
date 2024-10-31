@@ -1,6 +1,6 @@
 # School Tasker
 <p align="center">
-    <img src="SchoolTasker_github.jpg" alt="School Tasker" style="max-width: 100%; width: 1000px">
+    <img src="SchoolTasker_logo01.jpg" alt="School Tasker" style="max-width: 100%; width: 1000px">
 </p>
 
 ## About
