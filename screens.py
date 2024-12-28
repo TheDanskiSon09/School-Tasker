@@ -197,7 +197,7 @@ async def get_user_month(month):
 
 
 async def get_hypertime(month: int, day: int, year: int):
-    if month < 10:
+    if int(month) < 10:
         hypertime = str(year) + "0" + str(month)
     else:
         hypertime = str(year) + str(month)
