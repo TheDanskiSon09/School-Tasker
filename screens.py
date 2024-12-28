@@ -1,4 +1,4 @@
-import contextlib
+from contextlib import suppress
 import json
 import logging
 import telegram.error
@@ -26,6 +26,7 @@ group_number INTEGER,
 task_description TEXT,
 task_day INT,
 task_month INT,
+task_year INT,
 hypertime INT
 )
 ''')
@@ -44,6 +45,7 @@ LOGGER = logging.getLogger('hammett')
 class Global:
     last_day = int()
     last_month = int()
+    last_year = int()
     index_store = int(0)
     open_date = True
     is_changing_task_description = False
@@ -53,8 +55,9 @@ class Global:
 
 
 class BaseScreen(Screen):
-    cache_covers = False
+    cache_covers = True
     hide_keyboard = True
+    # cover = 'school_tasker_logo.jpg'
 
 
 async def get_week_day(task_month_int: int, task_day: int):
@@ -105,20 +108,21 @@ async def recognise_n_tag(text: str):
     return text
 
 
-async def multipy_delete_task(by_day, n):
-    if by_day:
-        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_day <= ? and task_month = ?",
-                       (datetime.now().day, datetime.now().month,))
+async def check_task_validity(day: int, month: int, year: int):
+    if year > datetime.now().year:
+        return True
+    elif year == datetime.now().year:
+        if month > datetime.now().month:
+            return True
+        elif month == datetime.now().month:
+            if day > datetime.now().day:
+                return True
+            else:
+                return False
+        else:
+            return False
     else:
-        cursor.execute("SELECT item_index FROM SchoolTasker WHERE task_month < ?",
-                       (datetime.now().month,))
-    formatted_index = cursor.fetchall()
-    formatted_index = await get_clean_var(formatted_index, "to_int", n)
-    await logger_alert([0], "delete", formatted_index)
-    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (formatted_index,))
-    cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
-                   (formatted_index,))
-    connection.commit()
+        return False
 
 
 async def once_delete_task():
@@ -192,10 +196,13 @@ async def get_user_month(month):
                 return new_month
 
 
-async def get_hypertime(month, day: int):
-    hypertime = str(month)
+async def get_hypertime(month: int, day: int, year: int):
+    if month < 10:
+        hypertime = str(year) + "0" + str(month)
+    else:
+        hypertime = str(year) + str(month)
     if day < 10:
-        hypertime += str(0)
+        hypertime += "0"
     hypertime += str(day)
     return str(hypertime)
 
@@ -218,7 +225,8 @@ async def get_var_from_database(index, need_variable, order: bool):
                           "task_month": "SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC",
                           "item_index": "SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC",
                           "database_length_SchoolTasker": "SELECT count(*) FROM SchoolTasker",
-                          "database_length_Users": "SELECT count(*) FROM SchoolTasker"}
+                          "database_length_Users": "SELECT count(*) FROM SchoolTasker",
+                          "task_year": "SELECT task_year FROM SchoolTasker ORDER BY hypertime ASC"}
         title = variable_order[need_variable]
         cursor.execute(title)
         variable = cursor.fetchall()
@@ -234,6 +242,7 @@ async def get_var_from_database(index, need_variable, order: bool):
                            "task_description": "SELECT task_description FROM SchoolTasker WHERE item_index = ?",
                            "task_day": "SELECT task_day FROM SchoolTasker WHERE item_index = ?",
                            "task_month": "SELECT task_month FROM SchoolTasker WHERE item_index = ?",
+                           "task_year": "SELECT task_year FROM SchoolTasker WHERE item_index = ?"
                            }
         title = variable_select[need_variable]
         cursor.execute(title, (index,))
@@ -261,30 +270,44 @@ async def get_button_title(index):
     return title
 
 
-async def get_multipy_async(index, title, return_value):
+async def get_multipy_async(index, title, return_only_title: bool):
     out_of_data = False
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     task_day = await get_var_from_database(index, "task_day", True)
     check_day = int(task_day)
     task_month = await get_var_from_database(index, "task_month", True)
     check_month = int(task_month)
+    task_year = await get_var_from_database(index, "task_year", True)
+    check_year = int(task_year)
     if not out_of_data:
         task_month_int = int(task_month)
         task_month = await recognise_month(task_month)
-        if Global.last_day == task_day and Global.last_month == task_month:
+        if Global.last_day == task_day and Global.last_month == task_month and Global.last_year == task_year:
             if Global.open_date:
                 week_day = await get_week_day(task_month_int, int(task_day))
-                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                    task_month) + "</em>"
-                             + " :</strong>" + "\n\n")
+                if int(task_year) == datetime.now().year:
+                    task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                        task_month) + "</em>"
+                                 + " :</strong>" + "\n\n")
+                else:
+                    task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                        task_month) + " " + str(task_year) + "го года" + "</em>"
+                                 + " :</strong>" + "\n\n")
             else:
                 task_time = ""
         else:
             week_day = await get_week_day(task_month_int, int(task_day))
-            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
-                         + " :</strong>" + "\n\n")
+            if int(task_year) == datetime.now().year:
+                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                    task_month) + "</em>"
+                             + " :</strong>" + "\n\n")
+            else:
+                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                    task_month) + " " + str(task_year) + "го года" + "</em>"
+                             + " :</strong>" + "\n\n")
         Global.last_day = task_day
         Global.last_month = task_month
+        Global.last_year = task_year
         item_name = await get_var_from_database(index, "item_name", True)
         a = "<strong>"
         b = item_name
@@ -303,20 +326,12 @@ async def get_multipy_async(index, title, return_value):
         c = "</strong>\n\n"
         task_description = str(a) + str(b) + str(c)
         title += task_time + item_name + task_description
-        if return_value == 0:
-            return title
-        elif return_value == 1:
-            return check_day
-        else:
-            return check_month
     else:
         title += ""
-        if return_value == 0:
-            return title
-        elif return_value == 1:
-            return check_day
-        else:
-            return check_month
+    if return_only_title:
+        return title
+    else:
+        return title, check_day, check_month, check_year
 
 
 async def check_tasks():
@@ -334,23 +349,36 @@ async def check_tasks():
         cursor.execute('SELECT task_month FROM SchoolTasker')
         task_month = cursor.fetchall()
         task_month = await get_clean_var(task_month, "to_string", False)
+        cursor.execute('SELECT task_year FROM SchoolTasker')
+        task_year = cursor.fetchall()
+        task_year = await get_clean_var(task_year, "to_int", False)
         check_month = task_month
         check_day = task_day
-        if int(check_month) == datetime.now().month:
-            if int(check_day) <= datetime.now().day:
+        if task_year == datetime.now().year:
+            if int(check_month) == datetime.now().month:
+                if int(check_day) <= datetime.now().day:
+                    await once_delete_task()
+                    out_of_data = True
+            if int(check_month) < datetime.now().month:
                 await once_delete_task()
                 out_of_data = True
-        if int(check_month) < datetime.now().month:
+        elif task_year < datetime.now().year:
             await once_delete_task()
             out_of_data = True
         if not out_of_data:
             task_day = str(task_day)
             task_month = await recognise_month(task_month)
             week_day = await get_week_day(int(check_month), int(check_day))
-            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
-                         + ":</strong>" + "\n\n")
+            if task_year == datetime.now().year:
+                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
+                             + ":</strong>" + "\n\n")
+            else:
+                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + " " +
+                             str(task_year) + "го года" + "</em>"
+                             + ":</strong>" + "\n\n")
             Global.last_day = task_day
             Global.last_month = task_month
+            Global.last_year = task_year
             cursor.execute('SELECT item_name FROM SchoolTasker')
             item_name = cursor.fetchall()
             a = "<strong>"
@@ -379,42 +407,58 @@ async def check_tasks():
     elif database_length > 1:
         Global.open_date = True
         new_title = str()
-        n = int(0)
+        tasks_to_delete = []
         for i in range(database_length):
-            try:
-                title, check_day, check_month = (await get_multipy_async(n, title, 0),
-                                                 await get_multipy_async(n, title, 1),
-                                                 await get_multipy_async(n, title, 2))
-            except IndexError:
-                title, check_day, check_month = (await get_multipy_async(n - 1, title, 0),
-                                                 await get_multipy_async(n - 1, title, 1),
-                                                 await get_multipy_async(n - 1, title, 2))
-            if check_month == datetime.now().month:
-                if check_day <= datetime.now().day:
+            title, check_day, check_month, check_year = await get_multipy_async(i, title, False)
+            if check_year == datetime.now().year:
+                if check_month == datetime.now().month:
+                    if check_day <= datetime.now().day:
+                        title = ""
+                        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                        del_index = cursor.fetchall()
+                        del_index = await get_clean_var(del_index, "to_int", i)
+                        if del_index not in tasks_to_delete:
+                            tasks_to_delete.append(del_index)
+                if check_month < datetime.now().month:
                     title = ""
-                    await multipy_delete_task(True, n)
-                    n -= 1
-            if check_month < datetime.now().month:
+                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                    del_index = cursor.fetchall()
+                    del_index = await get_clean_var(del_index, "to_int", i)
+                    if del_index not in tasks_to_delete:
+                        tasks_to_delete.append(del_index)
+            if check_year < datetime.now().year:
                 title = ""
-                await multipy_delete_task(False, n)
+                cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                del_index = cursor.fetchall()
+                del_index = await get_clean_var(del_index, "to_int", i)
+                if del_index not in tasks_to_delete:
+                    tasks_to_delete.append(del_index)
             else:
                 new_title = title
                 Global.open_date = False
-                n += 1
             if not new_title:
                 SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
             else:
                 SchoolTasks.description = new_title
+        for task_id in tasks_to_delete:
+            await logger_alert([0], "delete", task_id)
+            cursor.execute('DELETE FROM SchoolTasker WHERE item_index = ?', (task_id,))
+            cursor.execute('UPDATE SchoolTasker SET item_index = item_index-1 WHERE item_index>?', (task_id,))
+            connection.commit()
         if database_length < 1:
             SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
-async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month, stat):
+async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month,
+                                 task_year, stat):
     status_dict = {"change": "изменено",
                    "add": "добавлено"}
     week_day = await get_week_day(task_month_int, int(task_day))
     title = "На " + "<em>" + week_day + ", " + str(task_day)
-    add_month_txt = " " + str(task_month) + "</em>"
+    if task_year == datetime.now().year:
+        add_month_txt = " " + str(task_month) + "</em>"
+    else:
+        add_month_txt = " " + str(task_month) + " " + str(task_year) + "го года" + "</em>"
     title += str(add_month_txt)
     status = status_dict[stat]
     title += " было " + status + " задание по "
@@ -668,6 +712,45 @@ class SchoolTasks(BaseScreen):
         ]
 
 
+class AlertAddingOldTask(BaseScreen):
+    description = ("<strong>⚠Внимание!\nВы ввели дату и месяц задания, которые уже считаются устаревшими."
+                   " Если Вы добавите задание с данными характеристиками, оно будет удалено при"
+                   " первом заходе в задачник!"
+                   "\nВы точно хотите добавить данное задание?</strong>")
+    task_args = list()
+
+    async def add_default_keyboard(self, _update, _context):
+        return [
+            [
+                Button("Добавить данное задание➕", self.add_old_task, source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅️ Изменить дату/месяц задания", self.change_task_time,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅️ В меню редактора", ManageSchoolTasksMain, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+            ]
+        ]
+
+    @register_button_handler
+    async def change_task_time(self, _update, _context):
+        await ManageSchoolTasksAddDetails().set_stage(_update, _context, 1)
+        ManageSchoolTasksAddDetails.task_item = self.task_args[0]
+        ManageSchoolTasksAddDetails.task_description = self.task_args[1]
+        ManageSchoolTasksAddDetails.group_number = self.task_args[2]
+        ManageSchoolTasksAddDetails.task_day = self.task_args[3]
+        ManageSchoolTasksAddDetails.task_month = self.task_args[4]
+        ManageSchoolTasksAddDetails.task_year = self.task_args[5]
+        return await ManageSchoolTasksAddDetails().goto(_update, _context)
+
+    @register_button_handler
+    async def add_old_task(self, _update, _context):
+        await ManageSchoolTasksAddDetails().set_stage(_update, _context, 0)
+        await add_task_school(_update, _context, self.task_args[0], self.task_args[1], self.task_args[2],
+                              self.task_args[3], self.task_args[4], self.task_args[5])
+
+
 class ManageSchoolTasksMain(BaseScreen):
     description = '<strong>Какие изменения Вы хотите внести в задачник?</strong>'
 
@@ -707,7 +790,7 @@ class ManageSchoolTasksMain(BaseScreen):
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0:
             ManageSchoolTasksChangeMain.description = "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
-        if database_length < 1:
+        else:
             ManageSchoolTasksChangeMain.description = "<strong>На данный момент список заданий пуст!</strong>"
         return await ManageSchoolTasksChangeMain().goto(_update, _context)
 
@@ -825,17 +908,18 @@ class ManageSchoolTasksAddGroupNumber(BaseScreen):
         return await ManageSchoolTasksAdd().goto(_update, _context)
 
 
-async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month):
+async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
+                          task_year):
     global cursor
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-    hypertime = await get_hypertime(task_month, task_day)
+    hypertime = await get_hypertime(task_month, task_day, task_year)
     cursor.execute(
         'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
-        'hypertime)'
+        'task_year, hypertime)'
         'VALUES'
-        '(?,?,?,?,?,?,?)',
+        '(?,?,?,?,?,?,?,?)',
         (task_item, Global.index_store, group_number, task_description, task_day,
-         task_month, hypertime,))
+         task_month, task_year, hypertime,))
     connection.commit()
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     database_length = Global.index_store
@@ -852,9 +936,14 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         task_month = cursor.fetchall()
         task_month = await get_clean_var(task_month, "to_string", False)
         task_month = await recognise_month(task_month)
-        task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+        if task_year == datetime.now().year:
+            task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
+        else:
+            task_time = ("<strong>На " + str(task_day) + " " + str(task_month) + str(task_year) + "го года" +
+                         " :</strong>" + "\n")
         Global.last_day = task_day
         Global.last_month = task_month
+        Global.last_year = task_year
         cursor.execute('SELECT item_name FROM SchoolTasker')
         item_name = cursor.fetchall()
         item_name = await get_clean_var(item_name, "to_string", False)
@@ -919,16 +1008,23 @@ class TaskWasChanged(BaseScreen):
         ]
 
 
+async def go_to_alert(task_args: list, _update, _context):
+    AlertAddingOldTask.task_args = task_args
+    return await AlertAddingOldTask().jump(_update, _context)
+
+
 class ManageSchoolTasksAddDetails(BaseScreen):
     description = '<strong>Введите текст задания:</strong>'
     staged_once = False
     staged_twice = False
     is_adding_task = False
+    current_stage = 0
     task_item = str()
     task_description = str()
     group_number = int(1)
     task_day = str()
     task_month = str()
+    task_year = int()
 
     async def add_default_keyboard(self, _update, _context):
         if not Global.is_changing_day and not Global.is_changing_month:
@@ -940,18 +1036,23 @@ class ManageSchoolTasksAddDetails(BaseScreen):
             ],
         ]
 
+    async def set_stage(self, _update, _context, stage: int):
+        desc_state = {0: "<strong>Введите текст задания: </strong>",
+                      1: "<strong>На какое число дано задание?</strong>",
+                      2: "<strong>На какой месяц дано задание?</strong>"}
+        self.description = desc_state[stage]
+        self.current_stage = stage
+
     @register_button_handler
     async def return_back(self, _update, _context):
-        if not self.staged_once and not self.staged_twice:
+        if self.current_stage == 0:
             self.is_adding_task = False
             return await ManageSchoolTasksAdd().goto(_update, _context)
-        if self.staged_once and not self.staged_twice:
-            self.staged_once = False
-            self.description = "<strong>Введите текст задания:</strong>"
+        elif self.current_stage == 1:
+            await self.set_stage(_update, _context, 0)
             return await ManageSchoolTasksAddDetails().jump(_update, _context)
-        if self.staged_once and self.staged_twice:
-            self.staged_twice = False
-            self.description = "<strong>На какое число задано задание?</strong>"
+        elif self.current_stage == 2:
+            await self.set_stage(_update, _context, 1)
             return await ManageSchoolTasksAddDetails().jump(_update, _context)
         if (Global.is_changing_day or Global.is_changing_month or Global.is_changing_task_description
                 or Global.is_changing_group_number):
@@ -972,7 +1073,8 @@ class ManageSchoolTasksAddDetails(BaseScreen):
             deletion_index = int()
         if str(user.id) in settings.ADMIN_GROUP:
             if self.is_adding_task:
-                self.task_item = context.user_data['task_item']
+                with suppress(KeyError):
+                    self.task_item = context.user_data['task_item']
                 try:
                     if self.task_item == "Английский язык" or self.task_item == "Информатика":
                         self.group_number = context.user_data['group_number']
@@ -980,44 +1082,55 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                         self.group_number = 1
                 except KeyError:
                     self.group_number = 1
-                if not self.staged_once and not self.staged_twice:
+                if self.current_stage == 0:
                     self.task_description = update.message.text
-                    self.description = "<strong>На какое число задано задание?</strong>"
-                    self.staged_once = True
+                    await self.set_stage(update, context, 1)
                     return await ManageSchoolTasksAddDetails().jump(update, context)
-                if self.staged_once and not self.staged_twice:
+                elif self.current_stage == 1:
                     self.task_day = update.message.text
                     try:
                         self.task_day = int(self.task_day)
                         if self.task_day > 31 or self.task_day < 1:
+                            self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
+                                                "дней!\nНа какое число дано задание?</strong>")
                             return await ManageSchoolTasksAddDetails().jump(update, context)
-                        self.staged_twice = True
-                        self.description = "<strong>На какой месяц задано задание?</strong>"
-                        return await ManageSchoolTasksAddDetails().jump(update, context)
+                        else:
+                            await self.set_stage(update, context, 2)
+                            return await ManageSchoolTasksAddDetails().jump(update, context)
                     except ValueError:
-                        self.description = "<strong>Пожалуйста, введите число!</strong>"
+                        self.description = "<strong>Пожалуйста, введите число, на день который дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
-                if self.staged_once and self.staged_twice:
+                else:
                     self.task_month = update.message.text
                     try:
                         self.task_month = int(await get_user_month(self.task_month))
                     except TypeError:
+                        self.description = "<strong>Пожалуйста, введите месяц, на которое дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     try:
                         if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
                                                                         int(self.task_month))[1]):
                             self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
                                                 "дней!\nНа какое число дано задание?</strong>")
-                            self.staged_twice = False
                             return await ManageSchoolTasksAddDetails().jump(update, context)
                         else:
-                            self.staged_once = False
-                            self.staged_twice = False
-                            self.description = "<strong>Введите текст задания:</strong>"
-                            await add_task_school(update, context, self.task_item, self.task_description,
-                                                  self.group_number, self.task_day, self.task_month)
+                            if datetime.now().month == 12 and int(self.task_month) < 9:
+                                self.task_year = datetime.now().year + 1
+                            else:
+                                self.task_year = datetime.now().year
+                            check = await check_task_validity(int(self.task_day), self.task_month, self.task_year)
                             self.is_adding_task = False
+                            if check:
+                                self.description = "<strong>Введите текст задания:</strong>"
+                                await self.set_stage(update, context, 0)
+                                await add_task_school(update, context, self.task_item, self.task_description,
+                                                      self.group_number, self.task_day, self.task_month,
+                                                      self.task_year)
+                            else:
+                                await go_to_alert([self.task_item, self.task_description, self.group_number,
+                                                   self.task_day, self.task_month, self.task_year], update, context)
                     except ValueError:
+                        self.description = "<strong>Пожалуйста, введите число, на месяц которого дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
             if Global.is_changing_task_description:
                 self.task_description = update.message.text
@@ -1032,7 +1145,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     connection.commit()
                     await send_update_notification(update, context, "change", int(formattered_index))
                     return await TaskWasChanged().jump(update, context)
-            if Global.is_changing_day:
+            elif Global.is_changing_day:
                 self.task_day = update.message.text
                 check_task = await check_task_status(context)
                 if not check_task:
@@ -1047,26 +1160,32 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                         check_month = await get_var_from_database(deletion_index, "task_month", True)
                         check_task_day = await update_day(check_month, self.task_day)
                         if check_task_day:
-                            formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                            Global.is_changing_month = False
-                            Global.is_changing_day = False
-                            cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
-                                           (self.task_day, formattered_index,))
-                            connection.commit()
-                            task_month = await get_var_from_database(deletion_index, "task_month", True)
-                            hypertime = await get_hypertime(task_month, self.task_day)
-                            cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
-                                           (hypertime, formattered_index,))
-                            connection.commit()
-                            await send_update_notification(update, context, "change", int(formattered_index))
-                            return await TaskWasChanged().jump(update, context)
+                            check_val = await check_task_validity(self.task_day, self.task_month, self.task_year)
+                            if check_val:
+                                formattered_index = await get_var_from_database(deletion_index, "item_index", True)
+                                Global.is_changing_month = False
+                                Global.is_changing_day = False
+                                cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
+                                               (self.task_day, formattered_index,))
+                                connection.commit()
+                                task_month = await get_var_from_database(deletion_index, "task_month", True)
+                                task_year = await get_var_from_database(deletion_index, "task_year", True)
+                                hypertime = await get_hypertime(task_month, self.task_day, task_year)
+                                cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
+                                               (hypertime, formattered_index,))
+                                connection.commit()
+                                await send_update_notification(update, context, "change", int(formattered_index))
+                                return await TaskWasChanged().jump(update, context)
+                            else:
+                                await go_to_alert([self.task_item, self.task_description, self.group_number,
+                                                   self.task_day, self.task_month, self.task_year], update, context)
                         else:
                             self.description = "На какой день дано задание?"
                             return await ManageSchoolTasksAddDetails().jump(update, context)
                     else:
                         self.description = "На какой день дано задание?"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
-            if Global.is_changing_month:
+            elif Global.is_changing_month:
                 self.task_month = update.message.text
                 check_task = await check_task_status(context)
                 if not check_task:
@@ -1078,19 +1197,24 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     except TypeError:
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     if check_month:
-                        self.staged_once = False
-                        self.staged_twice = False
                         self.description = "Введите текст задания:"
                         Global.is_changing_month = False
                         Global.is_changing_day = False
                         formattered_index = await get_var_from_database(deletion_index, "item_index", True)
-                        hypertime = await get_hypertime(check_month, int(check_day))
+                        if check_month < 9:
+                            task_year = await get_var_from_database(deletion_index, "task_year", True)
+                        else:
+                            task_year = datetime.now().year
+                            cursor.execute("UPDATE SchoolTasker set task_year = ? WHERE item_index = ?",
+                                           (task_year, formattered_index,))
+                        # check_val = await check_task_validity(self.task_day, self.task_month, self.task_year)
+                        hypertime = await get_hypertime(check_month, int(check_day), task_year)
                         cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
                                        (check_month, formattered_index,))
                         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                        (hypertime, formattered_index,))
                         connection.commit()
-                        await send_update_notification(update, context, "change", int(formattered_index))
+                        await send_update_notification(update, context, "change", deletion_index)
                         return await TaskWasChanged().jump(update, context)
                     else:
                         self.description = "<strong>На какой месяц дано задание?</strong>"
@@ -1108,10 +1232,13 @@ async def send_update_notification(update, context, status, index):
     task_month = await get_var_from_database(index, "task_month", False)
     task_month_int = int(task_month)
     task_month = await recognise_month(task_month)
+    task_year = await get_var_from_database(index, "task_year", False)
+    # cursor.execute('SELECT task_year FROM SchoolTasker WHERE item_index = ?', (index,))
+    # task_year = cursor.fetchall()
+    # task_year = await get_clean_var(task_year, "to_int", index)
     id_result = []
     notification_image = ""
-    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
-                                       (user.id,)):
+    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
         id_row = list(id_row)
         id_row = int(id_row[0])
         id_result.append(id_row)
@@ -1121,14 +1248,15 @@ async def send_update_notification(update, context, status, index):
         send_name = await get_clean_var(send_name, "to_string", False)
         notification_title = "<strong>Здравствуйте, " + str(send_name) + "!" + "\n"
         notification_title += await get_notification_title(task_item, task_description,
-                                                           group_number, task_day, task_month_int, task_month, status)
+                                                           group_number, task_day, task_month_int, task_month,
+                                                           task_year, status)
         config = RenderConfig(
             cover=notification_image,
             chat_id=user_id,
             description=notification_title,
         )
         extra_data = None
-        with contextlib.suppress(telegram.error.Forbidden):
+        with suppress(telegram.error.Forbidden):
             await NotificationScreen().send(context, config=config, extra_data=extra_data)
 
 
@@ -1154,50 +1282,36 @@ class TaskWasAdded(BaseScreen):
 
 class ManageSchoolTasksRemove(BaseScreen):
     global cursor
-    tasks_numbers = []
 
     async def add_default_keyboard(self, _update, _context):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         keyboard = []
-        if not database_length > 99:
-            for task_index in range(database_length):
-                with contextlib.suppress(KeyError):
-                    button_name = await get_button_title(task_index)
-                    button_list = [
-                        Button(
-                            str(button_name), self.remove_task,
-                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                            payload=json.dumps({'task_index': task_index,
-                                                'database_length': database_length}),
-                        )
-                    ]
-                    keyboard.append(button_list)
-            exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
-                                  source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
-            keyboard.append(exit_button)
-            return keyboard
-        else:
-            contact_button = [Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
-                                     source_type=SourcesTypes.URL_SOURCE_TYPE)]
-            exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
-                                  source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
-            keyboard.append(contact_button)
-            keyboard.append(exit_button)
-            return keyboard
+        for task_index in range(database_length):
+            with suppress(KeyError):
+                button_name = await get_button_title(task_index)
+                button_list = [
+                    Button(
+                        str(button_name), self.remove_task,
+                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                        payload=json.dumps({'task_index': task_index,
+                                            'database_length': database_length}),
+                    )
+                ]
+                keyboard.append(button_list)
+        exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
+                              source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
+        keyboard.append(exit_button)
+        return keyboard
 
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        if database_length > 0 and not database_length > 99:
+        if database_length > 0:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
-        if database_length < 1:
+        elif database_length < 1:
             return "<strong>На данный момент список заданий пуст!</strong>"
-        if database_length > 99:
-            return ("<strong>Прошу прощения, Я не могу вывести задачи из задачника - возможно превышен лимит возможных "
-                    "заданий!😢\n"
-                    "Предлагаю Вам связаться с разработчиком, чтобы доложить о случившейся проблеме!📞</strong>")
 
     @register_button_handler
     async def remove_task(self, update, context):
@@ -1249,9 +1363,13 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
                 task_month = cursor.fetchall()
                 task_month = await get_clean_var(task_month, "to_string", False)
                 task_month = await recognise_month(task_month)
+                cursor.execute('SELECT task_year FROM SchoolTasker')
+                task_year = cursor.fetchall()
+                task_year = await get_clean_var(task_year, "to_int", False)
                 task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
                 Global.last_day = task_day
                 Global.last_month = task_month
+                Global.last_year = task_year
                 cursor.execute('SELECT item_name FROM SchoolTasker')
                 item_name = cursor.fetchall()
                 item_name = await get_clean_var(item_name, "to_string", False)
@@ -1272,13 +1390,13 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
                 n = int(0)
                 Global.open_date = True
                 for i in range(database_length):
-                    title = await get_multipy_async(n, title, 0)
+                    title = await get_multipy_async(n, title, True)
                     Global.open_date = False
                     n += 1
             if not title:
                 SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
             else:
-                SchoolTasks.description = title
+                SchoolTasks.description = title[0]
             return await TaskWasRemoved().goto(_update, _context)
 
     async def get_description(self, _update, _context):
@@ -1383,39 +1501,26 @@ class ManageSchoolTasksChangeMain(BaseScreen):
         global cursor
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         keyboard = []
-        if not database_length > 99:
-            for task_index in range(database_length):
-                button_name = await get_button_title(task_index)
-                new_button = [Button(button_name, self.change_task,
-                                     source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                                     payload=json.dumps({'task_index': task_index,
-                                                         'database_length': database_length}))]
-                keyboard.append(new_button)
-            exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
-                                  source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
-            keyboard.append(exit_button)
-            return keyboard
-        else:
-            contact_button = [Button('Связаться с разработчиком📞', 'https://t.me/TheDanskiSon09',
-                                     source_type=SourcesTypes.URL_SOURCE_TYPE)]
-            exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
-                                  source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
-            keyboard.append(contact_button)
-            keyboard.append(exit_button)
-            return keyboard
+        for task_index in range(database_length):
+            button_name = await get_button_title(task_index)
+            new_button = [Button(button_name, self.change_task,
+                                 source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                                 payload=json.dumps({'task_index': task_index,
+                                                     'database_length': database_length}))]
+            keyboard.append(new_button)
+        exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
+                              source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
+        keyboard.append(exit_button)
+        return keyboard
 
     async def get_description(self, _update, _context):
         global cursor
         await check_tasks()
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        if database_length > 0 and not database_length > 99:
+        if database_length > 0:
             return "<strong>Какое из этих заданий Вы хотите изменить?</strong>"
         if database_length < 1:
             return "<strong>На данный момент список заданий пуст!</strong>"
-        if database_length > 99:
-            return ("<strong>Прошу прощения, Я не могу вывести задачи из задачника - возможно превышен лимит возможных "
-                    "заданий!😢\n"
-                    "Предлагаю Вам связаться с разработчиком, чтобы доложить о случившейся проблеме!📞</strong>")
 
     @register_button_handler
     async def change_task(self, update, context):
