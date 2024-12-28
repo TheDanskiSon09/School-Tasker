@@ -1238,7 +1238,8 @@ async def send_update_notification(update, context, status, index):
     # task_year = await get_clean_var(task_year, "to_int", index)
     id_result = []
     notification_image = ""
-    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
+    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
+                                       (user.id,)):
         id_row = list(id_row)
         id_row = int(id_row[0])
         id_result.append(id_row)
