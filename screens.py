@@ -60,8 +60,8 @@ class BaseScreen(Screen):
     # cover = 'school_tasker_logo.jpg'
 
 
-async def get_week_day(task_month_int: int, task_day: int):
-    week_day = date(datetime.now().year, task_month_int, task_day)
+async def get_week_day(task_year, task_month_int: int, task_day: int):
+    week_day = date(int(task_year), task_month_int, task_day)
     week_day_new = WEEK_DAYS[week_day.weekday()]
     return str(week_day_new)
 
@@ -284,7 +284,7 @@ async def get_multipy_async(index, title, return_only_title: bool):
         task_month = await recognise_month(task_month)
         if Global.last_day == task_day and Global.last_month == task_month and Global.last_year == task_year:
             if Global.open_date:
-                week_day = await get_week_day(task_month_int, int(task_day))
+                week_day = await get_week_day(task_year, task_month_int, int(task_day))
                 if int(task_year) == datetime.now().year:
                     task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                         task_month) + "</em>"
@@ -296,7 +296,7 @@ async def get_multipy_async(index, title, return_only_title: bool):
             else:
                 task_time = ""
         else:
-            week_day = await get_week_day(task_month_int, int(task_day))
+            week_day = await get_week_day(task_year, task_month_int, int(task_day))
             if int(task_year) == datetime.now().year:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + "</em>"
@@ -368,7 +368,7 @@ async def check_tasks():
         if not out_of_data:
             task_day = str(task_day)
             task_month = await recognise_month(task_month)
-            week_day = await get_week_day(int(check_month), int(check_day))
+            week_day = await get_week_day(task_year, int(check_month), int(check_day))
             if task_year == datetime.now().year:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(task_month) + "</em>"
                              + ":</strong>" + "\n\n")
@@ -453,7 +453,7 @@ async def get_notification_title(task_item, task_description, group_number, task
                                  task_year, stat):
     status_dict = {"change": "изменено",
                    "add": "добавлено"}
-    week_day = await get_week_day(task_month_int, int(task_day))
+    week_day = await get_week_day(task_year, task_month_int, int(task_day))
     title = "На " + "<em>" + week_day + ", " + str(task_day)
     if task_year == datetime.now().year:
         add_month_txt = " " + str(task_month) + "</em>"
