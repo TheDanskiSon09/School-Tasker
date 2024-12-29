@@ -1,22 +1,22 @@
+from calendar import monthrange
+from json import dumps, loads
+from logging import getLogger
+from sqlite3 import connect, IntegrityError
 from contextlib import suppress
-import json
-import logging
-import telegram.error
+from datetime import date
+from random import randint
+from time import gmtime, strftime
+from telegram.error import Forbidden
 from hammett.core import Button, Screen
 from hammett.core.constants import RenderConfig, SourcesTypes
 from hammett.core.exceptions import PayloadIsEmpty
 from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
-import settings
-import sqlite3
+from settings import ADMIN_GROUP
 from constants import *
-from datetime import datetime, date
-import calendar
-from time import gmtime, strftime
-from random import randint
 
-connection = sqlite3.connect('school_tasker_database.db')
+connection = connect('school_tasker_database.db')
 cursor = connection.cursor()
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS SchoolTasker (
@@ -30,7 +30,7 @@ task_year INT,
 hypertime INT
 )
 ''')
-users_connection = sqlite3.connect('users_database.db')
+users_connection = connect('users_database.db')
 users_cursor = users_connection.cursor()
 users_cursor.execute('''
 CREATE TABLE IF NOT EXISTS Users (
@@ -39,7 +39,7 @@ user_id INT PRIMARY KEY,
 user_name TEXT
 )
 ''')
-LOGGER = logging.getLogger('hammett')
+LOGGER = getLogger('hammett')
 
 
 class Global:
@@ -109,13 +109,13 @@ async def recognise_n_tag(text: str):
 
 
 async def check_task_validity(day: int, month: int, year: int):
-    if year > datetime.now().year:
+    if str(year) > str(datetime.now().year):
         return True
-    elif year == datetime.now().year:
-        if month > datetime.now().month:
+    elif str(year) == str(datetime.now().year):
+        if str(month) > str(datetime.now().month):
             return True
-        elif month == datetime.now().month:
-            if day > datetime.now().day:
+        elif str(month) == str(datetime.now().month):
+            if str(day) > str(datetime.now().day):
                 return True
             else:
                 return False
@@ -126,26 +126,26 @@ async def check_task_validity(day: int, month: int, year: int):
 
 
 async def once_delete_task():
-    await logger_alert([0], "delete", 0)
+    await logger_alert([0], "delete", 0, False)
     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
     connection.commit()
     SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
 async def update_day(check_month, task_day):
-    if task_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), int(check_month))[1]):
+    if task_day <= int(monthrange(int(strftime("%Y", gmtime())), int(check_month))[1]):
         return task_day
     else:
         return False
 
 
-async def logger_alert(user: list, status: str, formattered_index):
+async def logger_alert(user: list, status: str, formattered_index, is_order: bool):
     global cursor
-    item_name = await get_var_from_database(formattered_index, "item_name", False)
-    task_description = await get_var_from_database(formattered_index, "task_description", False)
-    group_number = await get_var_from_database(formattered_index, "group_number", False)
-    task_day = await get_var_from_database(formattered_index, "task_day", False)
-    task_month = await get_var_from_database(formattered_index, "task_month", False)
+    item_name = await get_var_from_database(formattered_index, "item_name", is_order)
+    task_description = await get_var_from_database(formattered_index, "task_description", is_order)
+    group_number = await get_var_from_database(formattered_index, "group_number", is_order)
+    task_day = await get_var_from_database(formattered_index, "task_day", is_order)
+    task_month = await get_var_from_database(formattered_index, "task_month", is_order)
     status_dict = {"add": "added",
                    "delete": "deleted",
                    "change": "changed"}
@@ -209,7 +209,7 @@ async def get_hypertime(month: int, day: int, year: int):
 
 async def update_month(check_day, task_month):
     check_month = await get_user_month(task_month)
-    if check_day <= int(calendar.monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
+    if check_day <= int(monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
         return check_month
     else:
         return False
@@ -441,7 +441,7 @@ async def check_tasks():
             else:
                 SchoolTasks.description = new_title
         for task_id in tasks_to_delete:
-            await logger_alert([0], "delete", task_id)
+            await logger_alert([0], "delete", task_id, False)
             cursor.execute('DELETE FROM SchoolTasker WHERE item_index = ?', (task_id,))
             cursor.execute('UPDATE SchoolTasker SET item_index = item_index-1 WHERE item_index>?', (task_id,))
             connection.commit()
@@ -455,7 +455,7 @@ async def get_notification_title(task_item, task_description, group_number, task
                    "add": "добавлено"}
     week_day = await get_week_day(task_year, task_month_int, int(task_day))
     title = "На " + "<em>" + week_day + ", " + str(task_day)
-    if task_year == datetime.now().year:
+    if str(task_year) == str(datetime.now().year):
         add_month_txt = " " + str(task_month) + "</em>"
     else:
         add_month_txt = " " + str(task_month) + " " + str(task_year) + "го года" + "</em>"
@@ -473,7 +473,7 @@ async def get_notification_title(task_item, task_description, group_number, task
 
 async def get_payload(self, update, context, key_id: str, value: str):
     try:
-        payload = json.loads(await self.get_payload(update, context))
+        payload = loads(await self.get_payload(update, context))
     except PayloadIsEmpty:
         payload = context.user_data.get(key_id)
     else:
@@ -523,7 +523,7 @@ class MainMenu(StartMixin, BaseScreen):
     }
 
     async def _get_user_status(self, user):
-        if str(user.id) in settings.ADMIN_GROUP:
+        if str(user.id) in ADMIN_GROUP:
             return self.admin_status
         else:
             return self.anonymous_status
@@ -572,7 +572,7 @@ class MainMenu(StartMixin, BaseScreen):
             # When the start handler is invoked through editing
             # the message with the /start command.
             user = update.edited_message.from_user
-        if str(user.id) in settings.ADMIN_GROUP:
+        if str(user.id) in ADMIN_GROUP:
             LOGGER.info('The user %s (%s) was added to the admin group.', user.username, user.id)
         else:
             LOGGER.info('The user %s (%s) was added to the anonim group.', user.username, user.id)
@@ -583,12 +583,12 @@ class MainMenu(StartMixin, BaseScreen):
                 '(?,?,?)',
                 (1, user.id, update.message.chat.first_name))
             users_connection.commit()
-            if str(user.id) in settings.ADMIN_GROUP:
+            if str(user.id) in ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_FIRST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_FIRST[randint(0, 2)]
-        except sqlite3.IntegrityError or AttributeError:
-            if str(user.id) in settings.ADMIN_GROUP:
+        except IntegrityError or AttributeError:
+            if str(user.id) in ADMIN_GROUP:
                 MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
                 MainMenu.description = GREET_ANONIM_LATEST[randint(0, 2)]
@@ -678,7 +678,7 @@ class Options(BaseScreen):
             [
                 Button(notification_button_title, self.edit_notification_permission,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"index": notification_permission}))
+                       payload=dumps({"index": notification_permission}))
             ],
             [
                 Button('⬅️ Вернуться на главный экран', MainMenu,
@@ -718,20 +718,43 @@ class AlertAddingOldTask(BaseScreen):
                    " первом заходе в задачник!"
                    "\nВы точно хотите добавить данное задание?</strong>")
     task_args = list()
+    task_context = str()
+    current_index = int()
+
+    async def get_description(self, _update, _context):
+        if self.task_context == "add":
+            word00 = "добавите "
+            word01 = "добавить "
+        elif self.task_context == "change":
+            word00 = "измените "
+            word01 = "изменить "
+        else:
+            word00 = ""
+            word01 = ""
+        part00 = "<strong>⚠Внимание!\nВы ввели дату и месяц задания, которые уже считаются устаревшими."
+        part01 = " Если Вы " + word00 + ('задание с данными характеристиками, оно будет удалено при первом заходе в'
+                                         ' задачник!')
+        part02 = "\nВы точно хотите " + word01 + "данное задание?</strong>"
+        return part00 + part01 + part02
 
     async def add_default_keyboard(self, _update, _context):
-        return [
-            [
+        keyboard = []
+        if self.task_context == "add":
+            keyboard.append([
                 Button("Добавить данное задание➕", self.add_old_task, source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-            ],
-            [
-                Button("⬅️ Изменить дату/месяц задания", self.change_task_time,
-                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-            ],
-            [
-                Button("⬅️ В меню редактора", ManageSchoolTasksMain, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
-            ]
-        ]
+            ])
+        elif self.task_context == "change":
+            keyboard.append([
+                Button("Изменить данное задание✖", self.change_task, source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ])
+        keyboard.append([
+            Button("⬅️ Изменить дату/месяц задания", self.change_task_time,
+                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+        ])
+        keyboard.append([
+            Button("⬅️ В меню редактора", ManageSchoolTasksMain, source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+        ])
+        return keyboard
 
     @register_button_handler
     async def change_task_time(self, _update, _context):
@@ -749,6 +772,20 @@ class AlertAddingOldTask(BaseScreen):
         await ManageSchoolTasksAddDetails().set_stage(_update, _context, 0)
         await add_task_school(_update, _context, self.task_args[0], self.task_args[1], self.task_args[2],
                               self.task_args[3], self.task_args[4], self.task_args[5])
+
+    @register_button_handler
+    async def change_task(self, _update, _context):
+        global cursor
+        self.task_args[5] = datetime.now().year
+        cursor.execute('UPDATE SchoolTasker set task_day = ?, task_month = ?, task_year = ? WHERE item_index = ?',
+                       (self.task_args[3], self.task_args[4], self.task_args[5], self.current_index,))
+        connection.commit()
+        hypertime = await get_hypertime(self.task_args[4], self.task_args[3], self.task_args[5])
+        cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
+                       (hypertime, self.current_index,))
+        connection.commit()
+        await send_update_notification(_update, _context, "change", self.current_index, False)
+        return await TaskWasChanged().jump(_update, _context)
 
 
 class ManageSchoolTasksMain(BaseScreen):
@@ -803,53 +840,53 @@ class ManageSchoolTasksAdd(BaseScreen):
             [
                 Button("Алгебра", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Алгебра"})),
+                       payload=dumps({'task_item': "Алгебра"})),
                 Button("Английский язык", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Английский язык"})),
+                       payload=dumps({'task_item': "Английский язык"})),
                 Button("Биология", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Биология"})),
+                       payload=dumps({'task_item': "Биология"})),
                 Button("География", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "География"})),
+                       payload=dumps({'task_item': "География"})),
                 Button("Геометрия", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Геометрия"})),
+                       payload=dumps({'task_item': "Геометрия"})),
             ],
             [
                 Button("Информатика", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Информатика"})),
+                       payload=dumps({'task_item': "Информатика"})),
                 Button("История", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "История"})),
+                       payload=dumps({'task_item': "История"})),
                 Button("Литература", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Литература"})),
+                       payload=dumps({'task_item': "Литература"})),
                 Button("ОБЗР", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "ОБЗР"})),
+                       payload=dumps({'task_item': "ОБЗР"})),
                 Button("Обществознание", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Обществознание"})),
+                       payload=dumps({'task_item': "Обществознание"})),
             ],
             [
                 Button("Решение задач повышенного уровня по алгебре", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Решение задач повышенного уровня по алгебре"})),
+                       payload=dumps({'task_item': "Решение задач повышенного уровня по алгебре"})),
                 Button("Русский язык", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Русский язык"})),
+                       payload=dumps({'task_item': "Русский язык"})),
                 Button("Технология", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Технология"})),
+                       payload=dumps({'task_item': "Технология"})),
                 Button("Физика", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Физика"})),
+                       payload=dumps({'task_item': "Физика"})),
                 Button("Химия", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({'task_item': "Химия"})),
+                       payload=dumps({'task_item': "Химия"})),
             ],
             [
                 Button('⬅️ Назад', ManageSchoolTasksMain,
@@ -876,20 +913,20 @@ class ManageSchoolTasksAddGroupNumber(BaseScreen):
             buttons.append(
                 Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"group_number": 1})))
+                       payload=dumps({"group_number": 1})))
             buttons.append(
                 Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"group_number": 2})))
+                       payload=dumps({"group_number": 2})))
         if _context.user_data['task_item'] == "Информатика":
             buttons.append(
                 Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"group_number": 1})))
+                       payload=dumps({"group_number": 1})))
             buttons.append(
                 Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"group_number": 2})))
+                       payload=dumps({"group_number": 2})))
         keyboard.append(buttons)
         keyboard.append(
             [
@@ -984,7 +1021,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
         ManageSchoolTasksRemoveConfirm.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
     index = await get_var_from_database(False, "database_length_SchoolTasker", True)
     index -= 1
-    await send_update_notification(_update, _context, "add", index)
+    await send_update_notification(_update, _context, "add", index, False)
     return await TaskWasAdded().jump(_update, _context)
 
 
@@ -1008,8 +1045,10 @@ class TaskWasChanged(BaseScreen):
         ]
 
 
-async def go_to_alert(task_args: list, _update, _context):
+async def go_to_alert(task_args: list, task_context: str, current_index, _update, _context):
+    AlertAddingOldTask().task_context = task_context
     AlertAddingOldTask.task_args = task_args
+    AlertAddingOldTask().current_index = int(current_index)
     return await AlertAddingOldTask().jump(_update, _context)
 
 
@@ -1071,7 +1110,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
             deletion_index = context.user_data['deletion_index']
         except KeyError:
             deletion_index = int()
-        if str(user.id) in settings.ADMIN_GROUP:
+        if str(user.id) in ADMIN_GROUP:
             if self.is_adding_task:
                 with suppress(KeyError):
                     self.task_item = context.user_data['task_item']
@@ -1108,8 +1147,8 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                         self.description = "<strong>Пожалуйста, введите месяц, на которое дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     try:
-                        if int(self.task_day) > int(calendar.monthrange(int(strftime("%Y", gmtime())),
-                                                                        int(self.task_month))[1]):
+                        if int(self.task_day) > int(monthrange(int(strftime("%Y", gmtime())),
+                                                               int(self.task_month))[1]):
                             self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
                                                 "дней!\nНа какое число дано задание?</strong>")
                             return await ManageSchoolTasksAddDetails().jump(update, context)
@@ -1128,7 +1167,8 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                                       self.task_year)
                             else:
                                 await go_to_alert([self.task_item, self.task_description, self.group_number,
-                                                   self.task_day, self.task_month, self.task_year], update, context)
+                                                   self.task_day, self.task_month, self.task_year],
+                                                  "add", deletion_index, update, context)
                     except ValueError:
                         self.description = "<strong>Пожалуйста, введите число, на месяц которого дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
@@ -1143,7 +1183,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
                                    (self.task_description, formattered_index,))
                     connection.commit()
-                    await send_update_notification(update, context, "change", int(formattered_index))
+                    await send_update_notification(update, context, "change", int(formattered_index), False)
                     return await TaskWasChanged().jump(update, context)
             elif Global.is_changing_day:
                 self.task_day = update.message.text
@@ -1154,12 +1194,13 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     try:
                         self.task_day = int(self.task_day)
                     except ValueError:
-                        self.description = "На какой день дано задание?"
+                        self.description = "<strong>На какой день дано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     if not self.task_day < 1 and not self.task_day >= 32:
-                        check_month = await get_var_from_database(deletion_index, "task_month", True)
-                        check_task_day = await update_day(check_month, self.task_day)
+                        self.task_month = await get_var_from_database(deletion_index, "task_month", True)
+                        check_task_day = await update_day(self.task_month, self.task_day)
                         if check_task_day:
+                            self.task_year = await get_var_from_database(deletion_index, "task_year", True)
                             check_val = await check_task_validity(self.task_day, self.task_month, self.task_year)
                             if check_val:
                                 formattered_index = await get_var_from_database(deletion_index, "item_index", True)
@@ -1169,21 +1210,28 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                                (self.task_day, formattered_index,))
                                 connection.commit()
                                 task_month = await get_var_from_database(deletion_index, "task_month", True)
-                                task_year = await get_var_from_database(deletion_index, "task_year", True)
-                                hypertime = await get_hypertime(task_month, self.task_day, task_year)
+                                self.task_year = await get_var_from_database(deletion_index, "task_year", True)
+                                hypertime = await get_hypertime(task_month, self.task_day, self.task_year)
                                 cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                                                (hypertime, formattered_index,))
                                 connection.commit()
-                                await send_update_notification(update, context, "change", int(formattered_index))
+                                await send_update_notification(update, context, "change", int(formattered_index),
+                                                               False)
                                 return await TaskWasChanged().jump(update, context)
                             else:
+                                self.task_item = await get_var_from_database(deletion_index, "item_name", True)
+                                self.task_description = await get_var_from_database(deletion_index,
+                                                                                    "task_description", True)
+                                self.group_number = await get_var_from_database(deletion_index,
+                                                                                "group_number", True)
                                 await go_to_alert([self.task_item, self.task_description, self.group_number,
-                                                   self.task_day, self.task_month, self.task_year], update, context)
+                                                   self.task_day, self.task_month, self.task_year],
+                                                  "change", deletion_index, update, context)
                         else:
-                            self.description = "На какой день дано задание?"
+                            self.description = "<strong>На какое число дано задание?</strong>"
                             return await ManageSchoolTasksAddDetails().jump(update, context)
                     else:
-                        self.description = "На какой день дано задание?"
+                        self.description = "<strong>На какое число дано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
             elif Global.is_changing_month:
                 self.task_month = update.message.text
@@ -1195,51 +1243,67 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     try:
                         check_month = await update_month(int(check_day), self.task_month)
                     except TypeError:
+                        ManageSchoolTasksAddDetails().description = "<strong>На какой месяц дано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     if check_month:
-                        self.description = "Введите текст задания:"
-                        Global.is_changing_month = False
-                        Global.is_changing_day = False
                         formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                         if check_month < 9:
-                            task_year = await get_var_from_database(deletion_index, "task_year", True)
+                            self.task_year = await get_var_from_database(deletion_index, "task_year", True)
+                            if int(self.task_year) < datetime.now().year + 1:
+                                self.task_year = int(self.task_year) + 1
                         else:
-                            task_year = datetime.now().year
+                            self.task_year = datetime.now().year
                             cursor.execute("UPDATE SchoolTasker set task_year = ? WHERE item_index = ?",
-                                           (task_year, formattered_index,))
-                        # check_val = await check_task_validity(self.task_day, self.task_month, self.task_year)
-                        hypertime = await get_hypertime(check_month, int(check_day), task_year)
-                        cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
-                                       (check_month, formattered_index,))
-                        cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
-                                       (hypertime, formattered_index,))
-                        connection.commit()
-                        await send_update_notification(update, context, "change", deletion_index)
-                        return await TaskWasChanged().jump(update, context)
+                                           (self.task_year, formattered_index,))
+                        self.task_day = await get_var_from_database(deletion_index, "task_day", True)
+                        check_val = await check_task_validity(self.task_day, check_month, self.task_year)
+                        if check_val:
+                            self.description = "<strong>Введите текст задания:</strong>"
+                            Global.is_changing_month = False
+                            Global.is_changing_day = False
+                            hypertime = await get_hypertime(check_month, int(self.task_day), self.task_year)
+                            cursor.execute("UPDATE SchoolTasker set task_month = ? WHERE item_index = ?",
+                                           (check_month, formattered_index,))
+                            cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
+                                           (hypertime, formattered_index,))
+                            connection.commit()
+                            if int(self.task_year) != datetime.now().year:
+                                cursor.execute("UPDATE SchoolTasker set task_year = ? WHERE item_index = ?",
+                                               (self.task_year, formattered_index,))
+                                connection.commit()
+                            await send_update_notification(update, context, "change", deletion_index, False)
+                            return await TaskWasChanged().jump(update, context)
+                        else:
+                            self.task_item = await get_var_from_database(deletion_index, "item_name", True)
+                            self.task_description = await get_var_from_database(deletion_index,
+                                                                                "task_description", True)
+                            self.group_number = await get_var_from_database(deletion_index,
+                                                                            "group_number", True)
+                            await go_to_alert([self.task_item, self.task_description, self.group_number,
+                                               int(self.task_day), check_month, self.task_year],
+                                              "change", deletion_index, update, context)
                     else:
                         self.description = "<strong>На какой месяц дано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
 
 
-async def send_update_notification(update, context, status, index):
+async def send_update_notification(update, context, status, index, is_order: bool):
     global users_cursor
     user = update.effective_user
-    await logger_alert([user.username, user.id], status, index)
-    task_item = await get_var_from_database(index, "item_name", False)
-    task_description = await get_var_from_database(index, "task_description", False)
-    group_number = await get_var_from_database(index, "group_number", False)
-    task_day = await get_var_from_database(index, "task_day", False)
-    task_month = await get_var_from_database(index, "task_month", False)
+    await logger_alert([user.username, user.id], status, index, is_order)
+    task_item = await get_var_from_database(index, "item_name", is_order)
+    task_description = await get_var_from_database(index, "task_description", is_order)
+    group_number = await get_var_from_database(index, "group_number", is_order)
+    task_day = await get_var_from_database(index, "task_day", is_order)
+    task_month = await get_var_from_database(index, "task_month", is_order)
     task_month_int = int(task_month)
     task_month = await recognise_month(task_month)
-    task_year = await get_var_from_database(index, "task_year", False)
-    # cursor.execute('SELECT task_year FROM SchoolTasker WHERE item_index = ?', (index,))
-    # task_year = cursor.fetchall()
-    # task_year = await get_clean_var(task_year, "to_int", index)
+    task_year = await get_var_from_database(index, "task_year", is_order)
     id_result = []
     notification_image = ""
-    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
-                                       (user.id,)):
+    # for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
+    #                                    (user.id,)):
+    for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
         id_row = list(id_row)
         id_row = int(id_row[0])
         id_result.append(id_row)
@@ -1257,7 +1321,7 @@ async def send_update_notification(update, context, status, index):
             description=notification_title,
         )
         extra_data = None
-        with suppress(telegram.error.Forbidden):
+        with suppress(Forbidden):
             await NotificationScreen().send(context, config=config, extra_data=extra_data)
 
 
@@ -1295,8 +1359,8 @@ class ManageSchoolTasksRemove(BaseScreen):
                     Button(
                         str(button_name), self.remove_task,
                         source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                        payload=json.dumps({'task_index': task_index,
-                                            'database_length': database_length}),
+                        payload=dumps({'task_index': task_index,
+                                       'database_length': database_length}),
                     )
                 ]
                 keyboard.append(button_list)
@@ -1347,7 +1411,7 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
             task_index = _context.user_data['task_index']
             user = _update.effective_user
             formatted_index = await get_var_from_database(task_index, "item_index", True)
-            await logger_alert([user.username, user.id], "delete", formatted_index)
+            await logger_alert([user.username, user.id], "delete", formatted_index, False)
             cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
             connection.commit()
             cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
@@ -1448,22 +1512,22 @@ class ManageSchoolTasksChangeBase(BaseScreen):
             [
                 Button("Предмет", self.change_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_index": _context.user_data['task_index']}))
+                       payload=dumps({"task_index": _context.user_data['task_index']}))
             ],
             [
                 Button("Задание", self.change_school_task,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"deletion_index": _context.user_data['task_index']}))
+                       payload=dumps({"deletion_index": _context.user_data['task_index']}))
             ],
             [
                 Button("День", self.change_task_day,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"deletion_index": _context.user_data['task_index']}))
+                       payload=dumps({"deletion_index": _context.user_data['task_index']}))
             ],
             [
                 Button("Месяц", self.change_task_month,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"deletion_index": _context.user_data['task_index']}))
+                       payload=dumps({"deletion_index": _context.user_data['task_index']}))
             ],
             [
                 Button("⬅Назад", ManageSchoolTasksChangeMain,
@@ -1506,8 +1570,8 @@ class ManageSchoolTasksChangeMain(BaseScreen):
             button_name = await get_button_title(task_index)
             new_button = [Button(button_name, self.change_task,
                                  source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                                 payload=json.dumps({'task_index': task_index,
-                                                     'database_length': database_length}))]
+                                 payload=dumps({'task_index': task_index,
+                                                'database_length': database_length}))]
             keyboard.append(new_button)
         exit_button = [Button('⬅️ Назад', ManageSchoolTasksMain,
                               source_type=SourcesTypes.GOTO_SOURCE_TYPE)]
@@ -1538,59 +1602,59 @@ class ManageSchoolTasksChangeItem(BaseScreen):
             [
                 Button("Алгебра", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Алгебра", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Алгебра", "task_index": _context.user_data['task_index']})),
                 Button("Английский язык", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps(
+                       payload=dumps(
                            {"task_item": "Английский язык", "task_index": _context.user_data['task_index']})),
                 Button("Биология", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Биология", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Биология", "task_index": _context.user_data['task_index']})),
                 Button("География", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "География", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "География", "task_index": _context.user_data['task_index']})),
                 Button("Геометрия", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Геометрия", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Геометрия", "task_index": _context.user_data['task_index']})),
             ],
             [
                 Button("Информатика", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps(
+                       payload=dumps(
                            {"task_item": "Информатика", "task_index": _context.user_data['task_index']})),
                 Button("История", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "История", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "История", "task_index": _context.user_data['task_index']})),
                 Button("Литература", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Литература", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Литература", "task_index": _context.user_data['task_index']})),
                 Button("ОБЗР", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "ОБЗР", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "ОБЗР", "task_index": _context.user_data['task_index']})),
                 Button("Обществознание", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps(
+                       payload=dumps(
                            {"task_item": "Обществознание", "task_index": _context.user_data['task_index']})),
             ],
             [
                 Button("Решение задач повышенного уровня по алгебре", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps(
+                       payload=dumps(
                            {"task_item": "Решение задач повышенного уровня по алгебре",
                             "task_index": _context.user_data['task_index']})),
                 Button("Русский язык", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps(
+                       payload=dumps(
                            {"task_item": "Русский язык", "task_index": _context.user_data['task_index']})),
                 Button("Технология", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Технология", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Технология", "task_index": _context.user_data['task_index']})),
                 Button("Физика", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Физика", "task_index": _context.user_data['task_index']})),
+                       payload=dumps({"task_item": "Физика", "task_index": _context.user_data['task_index']})),
                 Button("Химия", self.change_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=json.dumps({"task_item": "Химия", "task_index": _context.user_data['task_index']}))
+                       payload=dumps({"task_item": "Химия", "task_index": _context.user_data['task_index']}))
             ],
             [
                 Button('⬅️ Назад', ManageSchoolTasksChangeBase,
@@ -1613,7 +1677,7 @@ class ManageSchoolTasksChangeItem(BaseScreen):
             cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
                            (context.user_data['task_item'], int(new_index),))
             connection.commit()
-            await send_update_notification(update, context, "change", int(new_index))
+            await send_update_notification(update, context, "change", int(new_index), False)
             return await TaskWasChanged().goto(update, context)
 
 
@@ -1691,10 +1755,10 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
                 [
                     Button('Группа 1️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                           payload=json.dumps({"group_number": 1})),
+                           payload=dumps({"group_number": 1})),
                     Button('Группа 2️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                           payload=json.dumps({"group_number": 2}))
+                           payload=dumps({"group_number": 2}))
                 ],
                 [
                     Button('⬅️ Назад', self.go_back,
@@ -1706,10 +1770,10 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
                 [
                     Button('Группа 1️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                           payload=json.dumps({"group_number": 1})),
+                           payload=dumps({"group_number": 1})),
                     Button('Группа 2️⃣', self.change_group_number,
                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                           payload=json.dumps({"group_number": 2}))
+                           payload=dumps({"group_number": 2}))
                 ],
                 [
                     Button('⬅️ Назад', self.go_back,
@@ -1728,7 +1792,7 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
             cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                            (context.user_data["group_number"], formattered_index,))
             connection.commit()
-            await send_update_notification(update, context, "change", int(formattered_index))
+            await send_update_notification(update, context, "change", int(formattered_index), False)
             return await TaskWasChanged().goto(update, context)
 
     @register_button_handler
