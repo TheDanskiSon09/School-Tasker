@@ -18,7 +18,8 @@ def main():
                             WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
                             ManageSchoolTasksChangeItem,
                             ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
-                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, TaskCantBeChanged]
+                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, TaskCantBeChanged,
+                            AlertAddingOldTask]
         },
     )
     app.run()
