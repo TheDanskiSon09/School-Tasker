@@ -63,7 +63,7 @@ async def get_day_time():
     elif 12 <= datetime.now().hour < 17:
         greet = choice(["🌞", "☀️"])
         greet += "Добрый день, "
-    elif 12 <= datetime.now().hour < 17:
+    elif 17 <= datetime.now().hour < 23:
         greet = choice(["🌅", "🌄"])
         greet += "Добрый вечер, "
     else:
@@ -417,7 +417,6 @@ async def main_get_payload(self, update, context, key_id: str, value: str):
 
 async def check_task_status(context):
     check_db = str(context.user_data['db_check'])
-    # database_length = await get_var_from_database(False, "database_length_SchoolTasker", True)
     cursor.execute('SELECT * FROM SchoolTasker')
     real_db = cursor.fetchall()
     real_db = await get_clean_var(real_db, "to_string", False)
