@@ -1,5 +1,7 @@
 from hammett.core import Application
 from hammett.core.constants import DEFAULT_STATE
+# from hammett.utils.autodiscovery import autodiscover_screens
+# from screens import MainMenu
 from screens import *
 
 
@@ -21,6 +23,9 @@ def main():
                             ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, TaskCantBeChanged,
                             AlertAddingOldTask]
         },
+        # states={
+        #     DEFAULT_STATE: autodiscover_screens('work.screens'),
+        # }
     )
     app.run()
 
