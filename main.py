@@ -24,7 +24,7 @@ def main():
                             AlertAddingOldTask]
         },
         # states={
-        #     DEFAULT_STATE: autodiscover_screens('work.screens'),
+        #     DEFAULT_STATE: autodiscover_screens('screens'),
         # }
     )
     app.run()

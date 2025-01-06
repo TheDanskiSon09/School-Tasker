@@ -48,24 +48,26 @@ class TaskCantBeChanged(BaseScreen):
 
 
 class MainMenu(StartMixin, BaseScreen):
-    admin_status = 'Администратор'
-    anonymous_status = 'Обычный пользователь'
-    text_map = {
-        admin_status: (
-        ),
-        anonymous_status: (
-        ),
-    }
-
-    async def _get_user_status(self, user):
-        if str(user.id) in ADMIN_GROUP:
-            return self.admin_status
-        else:
-            return self.anonymous_status
 
     async def get_config(self, update, _context, **_kwargs):
+        user_id = update.effective_user.id
         config = RenderConfig()
-        config.description = ""
+        try:
+            cursor.execute(
+                'INSERT INTO Users (user_permission, user_id) '
+                'VALUES'
+                '(?,?)',
+                (1, user_id))
+            connection.commit()
+            if str(user_id) in ADMIN_GROUP:
+                config.description = GREET_ADMIN_FIRST[randint(0, 2)]
+            else:
+                config.description = GREET_ANONIM_FIRST[randint(0, 2)]
+        except IntegrityError or AttributeError:
+            if str(user_id) in ADMIN_GROUP:
+                config.description = GREET_ADMIN_LATEST[randint(0, 2)]
+            else:
+                config.description = GREET_ANONIM_LATEST[randint(0, 2)]
         return config
 
     async def add_default_keyboard(self, _update, _context):
@@ -111,22 +113,6 @@ class MainMenu(StartMixin, BaseScreen):
             LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
         else:
             LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
-        try:
-            cursor.execute(
-                'INSERT INTO Users (user_permission, user_id) '
-                'VALUES'
-                '(?,?)',
-                (1, user.id))
-            connection.commit()
-            if str(user.id) in ADMIN_GROUP:
-                MainMenu.description = GREET_ADMIN_FIRST[randint(0, 2)]
-            else:
-                MainMenu.description = GREET_ANONIM_FIRST[randint(0, 2)]
-        except IntegrityError or AttributeError:
-            if str(user.id) in ADMIN_GROUP:
-                MainMenu.description = GREET_ADMIN_LATEST[randint(0, 2)]
-            else:
-                MainMenu.description = GREET_ANONIM_LATEST[randint(0, 2)]
         return await super().start(update, context)
 
 
@@ -347,9 +333,9 @@ class ManageSchoolTasksMain(BaseScreen):
     @register_button_handler
     async def go_to_remove_tasks_screen(self, _update, _context):
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        if database_length > 0:
+        if database_length >= 1:
             ManageSchoolTasksRemove.description = "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
-        if database_length < 1:
+        else:
             ManageSchoolTasksRemove.description = "<strong>На данный момент список заданий пуст!</strong>"
         return await ManageSchoolTasksRemove().goto(_update, _context)
 
@@ -538,6 +524,9 @@ class ManageSchoolTasksAddDetails(BaseScreen):
         if self.current_stage == 0:
             self.is_adding_task = False
             return await ManageSchoolTasksAdd().goto(_update, _context)
+        # else:
+        #     await self.set_stage(_update, _context, self.current_stage - 1)
+        #     return await ManageSchoolTasksAddDetails().jump(_update, _context)
         elif self.current_stage == 1:
             await self.set_stage(_update, _context, 0)
             return await ManageSchoolTasksAddDetails().jump(_update, _context)
@@ -791,9 +780,9 @@ class ManageSchoolTasksRemove(BaseScreen):
     async def get_description(self, _update, _context):
         await check_tasks(SchoolTasks)
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
-        if database_length > 0:
+        if database_length >= 1:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
-        elif database_length < 1:
+        else:
             return "<strong>На данный момент список заданий пуст!</strong>"
 
     @register_button_handler
@@ -835,51 +824,6 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
             cursor.execute('UPDATE SchoolTasker set item_index = item_index-1 where item_index>?',
                            (formatted_index,))
             connection.commit()
-            Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-            database_length = Global.index_store
-            title = str()
-            if database_length == 1:
-                cursor.execute('SELECT task_day FROM SchoolTasker')
-                task_day = cursor.fetchall()
-                task_day = await get_clean_var(task_day, "to_string", False)
-                cursor.execute('SELECT task_month FROM SchoolTasker')
-                task_month = cursor.fetchall()
-                task_month = await get_clean_var(task_month, "to_string", False)
-                task_month = await recognise_month(task_month)
-                cursor.execute('SELECT task_year FROM SchoolTasker')
-                task_year = cursor.fetchall()
-                task_year = await get_clean_var(task_year, "to_int", False)
-                task_time = "<strong>На " + str(task_day) + " " + str(task_month) + " :</strong>" + "\n"
-                Global.last_day = task_day
-                Global.last_month = task_month
-                Global.last_year = task_year
-                cursor.execute('SELECT item_name FROM SchoolTasker')
-                item_name = cursor.fetchall()
-                item_name = await get_clean_var(item_name, "to_string", False)
-                if item_name == "Английский язык" or item_name == "Информатика":
-                    item_name += " ("
-                    cursor.execute('SELECT group_number FROM SchoolTasker')
-                    group_number = cursor.fetchall()
-                    group_number = await get_clean_var(group_number, "to_string", False)
-                    item_name += group_number
-                    item_name += "ая группа)"
-                item_name += " : "
-                cursor.execute('SELECT task_description FROM SchoolTasker')
-                task_description = cursor.fetchall()
-                task_description = await get_clean_var(task_description, "to_string", False)
-                task_description += "\n"
-                title = task_time + item_name + task_description
-            elif database_length > 1:
-                n = int(0)
-                Global.open_date = True
-                for i in range(database_length):
-                    title = await get_multipy_async(n, title, True)
-                    Global.open_date = False
-                    n += 1
-            if not title:
-                SchoolTasks.description = "<strong>На данный момент список заданий пуст!</strong>"
-            else:
-                SchoolTasks.description = title[0]
             return await TaskWasRemoved().goto(_update, _context)
 
     async def get_description(self, _update, _context):
