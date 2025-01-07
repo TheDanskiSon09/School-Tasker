@@ -29,7 +29,8 @@ hypertime INT
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS Users (
 user_permission TEXT,
-user_id INT PRIMARY KEY
+user_id INT PRIMARY KEY,
+user_name TEXT
 )
 ''')
 LOGGER = getLogger('hammett')
@@ -428,7 +429,7 @@ async def check_task_status(context):
 
 async def send_update_notification(update, context, status, index, is_order: bool, notification_screen):
     user = update.effective_user
-    name = await get_username(user.username, user.first_name, user.last_name)
+    name = await get_username(user.first_name, user.last_name, user.username)
     await logger_alert([name, user.id], status, index, is_order)
     task_item = await get_var_from_database(index, "item_name", is_order)
     task_description = await get_var_from_database(index, "task_description", is_order)
@@ -447,7 +448,9 @@ async def send_update_notification(update, context, status, index, is_order: boo
         id_row = int(id_row[0])
         id_result.append(id_row)
     for user_id in id_result:
-        name = await get_username(user.username, user.first_name, user.last_name)
+        cursor.execute("SELECT user_name FROM Users WHERE user_id = ?", (user_id,))
+        name = cursor.fetchall()
+        name = await get_clean_var(name, "to_string", 0)
         notification_title = "<strong>Здравствуйте, " + str(name) + "!" + "\n"
         notification_title += await get_notification_title(task_item, task_description,
                                                            group_number, task_day, task_month_int, task_month,
@@ -487,7 +490,7 @@ async def is_informative_username(username):
         return True
 
 
-async def get_username(username, first_name, last_name):
+async def get_username(first_name, last_name, username):
     data = [first_name, last_name, username]
     for check in data:
         if check and await is_informative_username(check):

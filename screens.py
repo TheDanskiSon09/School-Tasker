@@ -52,18 +52,22 @@ class MainMenu(StartMixin, BaseScreen):
     async def get_config(self, update, _context, **_kwargs):
         user_id = update.effective_user.id
         config = RenderConfig()
+        name = await get_username(update.effective_user.first_name, update.effective_user.last_name,
+                                  update.effective_user.username)
         try:
             cursor.execute(
-                'INSERT INTO Users (user_permission, user_id) '
+                'INSERT INTO Users (user_permission, user_id, user_name) '
                 'VALUES'
-                '(?,?)',
-                (1, user_id))
+                '(?,?,?)',
+                (1, user_id, name))
             connection.commit()
             if str(user_id) in ADMIN_GROUP:
                 config.description = GREET_ADMIN_FIRST[randint(0, 2)]
             else:
                 config.description = GREET_ANONIM_FIRST[randint(0, 2)]
         except IntegrityError or AttributeError:
+            cursor.execute("UPDATE Users SET user_name = ? WHERE user_id = ?", (name, user_id,))
+            connection.commit()
             if str(user_id) in ADMIN_GROUP:
                 config.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
@@ -108,7 +112,7 @@ class MainMenu(StartMixin, BaseScreen):
             # When the start handler is invoked through editing
             # the message with the /start command.
             user = update.edited_message.from_user
-        user_name = await get_username(user.username, user.first_name, user.last_name)
+        user_name = await get_username(user.first_name, user.last_name, user.username)
         if str(user.id) in ADMIN_GROUP:
             LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
         else:
@@ -821,7 +825,7 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
             task_index = _context.user_data['task_index']
             user = _update.effective_user
             formatted_index = await get_var_from_database(task_index, "item_index", True)
-            name = await get_username(user.username, user.first_name, user.last_name)
+            name = await get_username(user.first_name, user.last_name, user.username)
             await logger_alert([name, user.id], "delete", formatted_index, False)
             cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
             connection.commit()
