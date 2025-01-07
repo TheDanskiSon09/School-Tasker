@@ -335,21 +335,21 @@ async def check_tasks(school_tasks_screen):
                         title = ""
                         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                         del_index = cursor.fetchall()
-                        del_index = await get_clean_var(del_index, "to_int", i)
+                        del_index = await get_clean_var(del_index, "to_string", i)
                         if del_index not in tasks_to_delete:
                             tasks_to_delete.append(del_index)
                 if check_month < datetime.now().month:
                     title = ""
                     cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                     del_index = cursor.fetchall()
-                    del_index = await get_clean_var(del_index, "to_int", i)
+                    del_index = await get_clean_var(del_index, "to_string", i)
                     if del_index not in tasks_to_delete:
                         tasks_to_delete.append(del_index)
             if check_year < datetime.now().year:
                 title = ""
                 cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                 del_index = cursor.fetchall()
-                del_index = await get_clean_var(del_index, "to_int", i)
+                del_index = await get_clean_var(del_index, "to_string", i)
                 if del_index not in tasks_to_delete:
                     tasks_to_delete.append(del_index)
             else:
@@ -464,20 +464,17 @@ async def send_update_notification(update, context, status, index, is_order: boo
 
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
                           task_year, notification_screen, task_was_added_screen):
-    # new_task_index = await generate_id()
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
+    new_task_index = await generate_id()
     hypertime = await get_hypertime(task_month, task_day, task_year)
     cursor.execute(
         'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
         'task_year, hypertime)'
         'VALUES'
         '(?,?,?,?,?,?,?,?)',
-        (task_item, Global.index_store, group_number, task_description, task_day,
+        (task_item, new_task_index, group_number, task_description, task_day,
          task_month, task_year, hypertime,))
     connection.commit()
-    index = await get_var_from_database(False, "database_length_SchoolTasker", True)
-    index -= 1
-    await send_update_notification(_update, _context, "add", index, False, notification_screen)
+    await send_update_notification(_update, _context, "add", new_task_index, False, notification_screen)
     return await task_was_added_screen().jump(_update, _context)
 
 
