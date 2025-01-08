@@ -11,6 +11,7 @@ from time import gmtime, strftime
 from json import loads
 from telegram.error import Forbidden
 from constants import *
+from settings import BOT_NAME
 
 connection = connect('school_tasker_database.db')
 cursor = connection.cursor()
@@ -54,7 +55,12 @@ async def get_week_day(task_year, task_month_int: int, task_day: int):
     return str(week_day_new)
 
 
-async def get_day_time():
+async def get_hypertext():
+    callback = '<a href="tg://resolve?domain=' + BOT_NAME + '&start=1">📎Просмотреть вложение</a>'
+    return callback
+
+
+async def get_day_time(name):
     if datetime.now().hour < 4:
         greet = choice(["🌕", "🌙"])
         greet += "Доброй ночи, "
@@ -70,6 +76,7 @@ async def get_day_time():
     else:
         greet = choice(["🌕", "🌙"])
         greet += "Доброй ночи, "
+    greet += name + "!"
     return greet
 
 
@@ -253,7 +260,7 @@ async def once_delete_task(school_tasks_screen):
     school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
-async def get_multipy_async(index, title, return_only_title: bool):
+async def get_multipy_async(index, title):
     out_of_data = False
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     task_day = await get_var_from_database(index, "task_day", True)
@@ -308,13 +315,10 @@ async def get_multipy_async(index, title, return_only_title: bool):
         b = task_description
         c = "</strong>\n\n"
         task_description = str(a) + str(b) + str(c)
-        title += task_time + item_name + task_description
+        title += task_time + item_name + task_description + await get_hypertext()
     else:
         title += ""
-    if return_only_title:
-        return title
-    else:
-        return title, check_day, check_month, check_year
+    return title, check_day, check_month, check_year
 
 
 async def check_tasks(school_tasks_screen):
@@ -329,7 +333,7 @@ async def check_tasks(school_tasks_screen):
         new_title = str()
         tasks_to_delete = []
         for i in range(database_length):
-            title, check_day, check_month, check_year = await get_multipy_async(i, title, False)
+            title, check_day, check_month, check_year = await get_multipy_async(i, title)
             if check_year == datetime.now().year:
                 if check_month == datetime.now().month:
                     if check_day <= datetime.now().day:

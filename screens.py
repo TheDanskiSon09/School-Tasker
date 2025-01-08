@@ -106,18 +106,21 @@ class MainMenu(StartMixin, BaseScreen):
 
     async def start(self, update, context):
         """Replies to the /start command. """
-        try:
-            user = update.message.from_user
-        except AttributeError:
-            # When the start handler is invoked through editing
-            # the message with the /start command.
-            user = update.edited_message.from_user
-        user_name = await get_username(user.first_name, user.last_name, user.username)
-        if str(user.id) in ADMIN_GROUP:
-            LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
+        if update.message.text[-1] == "1":
+            return await TaskMedia().jump(update, context)
         else:
-            LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
-        return await super().start(update, context)
+            try:
+                user = update.message.from_user
+            except AttributeError:
+                # When the start handler is invoked through editing
+                # the message with the /start command.
+                user = update.edited_message.from_user
+            user_name = await get_username(user.first_name, user.last_name, user.username)
+            if str(user.id) in ADMIN_GROUP:
+                LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
+            else:
+                LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
+            return await super().start(update, context)
 
 
 class SocialMedia(BaseScreen):
@@ -233,6 +236,10 @@ class SchoolTasks(BaseScreen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE),
             ],
         ]
+
+
+class TaskMedia(BaseScreen):
+    description = "TASK CAROUSEL"
 
 
 class AlertAddingOldTask(BaseScreen):

@@ -21,7 +21,7 @@ def main():
                             ManageSchoolTasksChangeItem,
                             ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
                             ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, TaskCantBeChanged,
-                            AlertAddingOldTask]
+                            AlertAddingOldTask, TaskMedia]
         },
         # states={
         #     DEFAULT_STATE: autodiscover_screens('screens'),
