@@ -673,8 +673,8 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                         if check_task_day:
                             self.task_year = await get_var_from_database(deletion_index, "task_year", True)
                             check_val = await check_task_validity(self.task_day, self.task_month, self.task_year)
+                            formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                             if check_val:
-                                formattered_index = await get_var_from_database(deletion_index, "item_index", True)
                                 Global.is_changing_month = False
                                 Global.is_changing_day = False
                                 cursor.execute("UPDATE SchoolTasker set task_day = ? WHERE item_index = ?",
@@ -697,7 +697,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                                                                 "group_number", True)
                                 await go_to_alert([self.task_item, self.task_description, self.group_number,
                                                    self.task_day, self.task_month, self.task_year],
-                                                  "change", deletion_index, update, context)
+                                                  "change", formattered_index, update, context)
                         else:
                             self.description = "<strong>На какое число дано задание?</strong>"
                             return await ManageSchoolTasksAddDetails().jump(update, context)
