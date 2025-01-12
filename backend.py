@@ -315,7 +315,8 @@ async def get_multipy_async(index, title):
         b = task_description
         c = "</strong>\n\n"
         task_description = str(a) + str(b) + str(c)
-        title += task_time + item_name + task_description + await get_hypertext()
+        title += task_time + item_name + task_description
+        # title += task_time + item_name + task_description + await get_hypertext() + "\n\n"
     else:
         title += ""
     return title, check_day, check_month, check_year
@@ -367,7 +368,6 @@ async def check_tasks(school_tasks_screen):
         for task_id in tasks_to_delete:
             await logger_alert([], "delete", task_id, False)
             cursor.execute('DELETE FROM SchoolTasker WHERE item_index = ?', (task_id,))
-            cursor.execute('UPDATE SchoolTasker SET item_index = item_index-1 WHERE item_index>?', (task_id,))
             connection.commit()
         if database_length < 1:
             school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"

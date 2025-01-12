@@ -7,8 +7,10 @@ from hammett.core.handlers import register_button_handler, register_typing_handl
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
 from backend import *
-from settings import ADMIN_GROUP
+from settings import ADMIN_GROUP, MEDIA_ROOT
 from constants import *
+from extensions import STCarouselWidget
+from time import sleep
 
 
 class BaseScreen(Screen):
@@ -107,6 +109,7 @@ class MainMenu(StartMixin, BaseScreen):
     async def start(self, update, context):
         """Replies to the /start command. """
         if update.message.text[-1] == "1":
+            sleep(1)
             return await TaskMedia().jump(update, context)
         else:
             try:
@@ -238,8 +241,24 @@ class SchoolTasks(BaseScreen):
         ]
 
 
-class TaskMedia(BaseScreen):
-    description = "TASK CAROUSEL"
+class TaskMedia(BaseScreen, STCarouselWidget):
+    cache_covers = True
+    images = [
+        [MEDIA_ROOT / "school_tasker_logo.jpg", "<strong>Hello!</strong>"]
+    ]
+
+    async def add_default_keyboard(self, _update, _context):
+        return [
+            [
+                Button("⬅Назад", self.go_back,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ]
+        ]
+
+    @register_button_handler
+    async def go_back(self, _update, _context):
+        await check_tasks(SchoolTasks)
+        return await SchoolTasks().jump(_update, _context)
 
 
 class AlertAddingOldTask(BaseScreen):
