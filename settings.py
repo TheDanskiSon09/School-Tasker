@@ -1,9 +1,11 @@
 from dotenv import load_dotenv
-import os
+from pathlib import Path
+from os import getenv
 load_dotenv(".env")
 HIDERS_CHECKER = 'hiders_checker.SchoolTaskerBotHiderChecker'
-TOKEN = os.getenv("TOKEN", "")
-ADMIN_GROUP = os.getenv("ADMIN_GROUP", "").split(",")
-DIRECTOR_ID = os.getenv("DIRECTOR_ID", "")
+TOKEN = getenv("TOKEN", "")
+ADMIN_GROUP = getenv("ADMIN_GROUP", "").split(",")
+DIRECTOR_ID = getenv("DIRECTOR_ID", "")
 SAVE_LATEST_MESSAGE = True
 BOT_NAME = "SchoolTaskerbot"
+MEDIA_ROOT = Path(__file__).resolve().parent / 'media'
