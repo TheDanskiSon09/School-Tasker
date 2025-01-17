@@ -7,5 +7,4 @@ TOKEN = getenv("TOKEN", "")
 ADMIN_GROUP = getenv("ADMIN_GROUP", "").split(",")
 DIRECTOR_ID = getenv("DIRECTOR_ID", "")
 SAVE_LATEST_MESSAGE = True
-BOT_NAME = "SchoolTaskerbot"
 MEDIA_ROOT = Path(__file__).resolve().parent / 'media'
