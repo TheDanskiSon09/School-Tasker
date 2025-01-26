@@ -8,9 +8,9 @@ from constants import *
 from hammett_extensions.carousel import STCarouselWidget
 from hammett.core import Screen, Button
 from hammett.core.constants import SourcesTypes, RenderConfig
-from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
+from hammett_extensions.handlers import register_button_handler, register_typing_handler, register_input_handler
 from settings import ADMIN_GROUP, MEDIA_ROOT
 
 
@@ -169,9 +169,12 @@ class MainMenu(StartMixin, BaseScreen):
             LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
         return await super().start(update, context)
 
-    @media_handler
+    @register_input_handler
     async def test(self, update, context):
-        return await Options().goto(update, context)
+        if not update.message.text:
+            print(dir(update.message))
+            bot = update.message.get_bot()
+            # file = await bot.get_file(update.message.id)
 
 
 class SocialMedia(BaseScreen):
