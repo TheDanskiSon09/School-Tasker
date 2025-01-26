@@ -5,7 +5,7 @@ from sqlite3 import IntegrityError
 from telegram.error import Forbidden
 from backend import *
 from constants import *
-from extensions import STCarouselWidget
+from hammett_extensions.carousel import STCarouselWidget
 from hammett.core import Screen, Button
 from hammett.core.constants import SourcesTypes, RenderConfig
 from hammett.core.handlers import register_button_handler, register_typing_handler
