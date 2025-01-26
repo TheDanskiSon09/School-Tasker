@@ -1,17 +1,13 @@
 from calendar import monthrange
-from contextlib import suppress
 from datetime import date
 from secrets import token_urlsafe
 from logging import getLogger
 from random import choice
-from hammett.core.constants import RenderConfig
 from hammett.core.exceptions import PayloadIsEmpty
 from sqlite3 import connect
 from time import gmtime, strftime
 from json import loads
-from telegram.error import Forbidden
 from constants import *
-from settings import BOT_NAME
 
 connection = connect('school_tasker_database.db')
 cursor = connection.cursor()
@@ -37,6 +33,32 @@ user_name TEXT
 LOGGER = getLogger('hammett')
 
 
+def media_handler(func):
+    async def wrapper(self, update, context, *args, **kwargs):
+        message = update.message
+        if message.photo:
+            file = message.photo[-1]
+            file_id = file.file_id
+            file = await context.bot.get_file(file_id)
+            await file.download('image.jpg')
+            await update.message.reply_text("GOT IMAGE!")
+        elif message.video:
+            file_id = message.video.file_id
+            file = await context.bot.get_file(file_id)
+            await file.download('video.mp4')
+            await update.message.reply_text("GOT VIDEO!")
+
+        elif message.audio:
+            file_id = message.audio.file_id
+            file = await context.bot.get_file(file_id)
+            await file.download('audio.mp3')
+            await update.message.reply_text("GOT AUDIO!")
+        else:
+            await update.message.reply_text("UNSUPORRTED FILE!")
+        return await func(self, update, context, *args, **kwargs)
+    return wrapper
+
+
 class Global:
     last_day = int()
     last_month = int()
@@ -53,11 +75,6 @@ async def get_week_day(task_year, task_month_int: int, task_day: int):
     week_day = date(int(task_year), task_month_int, task_day)
     week_day_new = WEEK_DAYS[week_day.weekday()]
     return str(week_day_new)
-
-
-async def get_hypertext():
-    callback = '<a href="tg://resolve?domain=' + BOT_NAME + '&start=1">📎Просмотреть вложение</a>'
-    return callback
 
 
 async def get_day_time(name):
@@ -80,15 +97,16 @@ async def get_day_time(name):
     return greet
 
 
-async def get_clean_var(var, new_var_type: str, index: int):
+async def get_clean_var(var, new_var_type: str, index: int, need_clear: bool):
     var = str(var[index])
     if new_var_type == "to_string":
-        if var[0] == "(":
-            var = var[1: -1]
-        if var[-1] == ',':
-            var = var[0: -1]
-        if var[0] == "'":
-            var = var[1: -1]
+        if need_clear:
+            if var[0] == "(":
+                var = var[1: -1]
+            if var[-1] == ',':
+                var = var[0: -1]
+            if var[0] == "'":
+                var = var[1: -1]
         return str(var)
     if new_var_type == "to_int":
         if var[0] == "(":
@@ -204,10 +222,10 @@ async def get_var_from_database(index, need_variable, order: bool):
         cursor.execute(title)
         variable = cursor.fetchall()
         if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
-            variable = await get_clean_var(variable, "to_int", False)
+            variable = await get_clean_var(variable, "to_int", False, True)
             return int(variable)
         else:
-            variable = await get_clean_var(variable, "to_string", index)
+            variable = await get_clean_var(variable, "to_string", index, True)
             return str(variable)
     else:
         variable_select = {"item_name": "SELECT item_name FROM SchoolTasker WHERE item_index = ?",
@@ -220,11 +238,14 @@ async def get_var_from_database(index, need_variable, order: bool):
         title = variable_select[need_variable]
         cursor.execute(title, (index,))
         variable = cursor.fetchone()
-        if need_variable == "item_name" or need_variable == "task_description":
-            variable = await get_clean_var(variable, "to_string", False)
+        if need_variable == "item_name":
+            variable = await get_clean_var(variable, "to_string", False, True)
+            return str(variable)
+        elif need_variable == "task_description":
+            variable = await get_clean_var(variable, "to_string", False, False)
             return str(variable)
         else:
-            variable = await get_clean_var(variable, "to_int", False)
+            variable = await get_clean_var(variable, "to_int", False, True)
             return int(variable)
 
 
@@ -261,7 +282,6 @@ async def once_delete_task(school_tasks_screen):
 
 
 async def get_multipy_async(index, title):
-    out_of_data = False
     Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
     task_day = await get_var_from_database(index, "task_day", True)
     check_day = int(task_day)
@@ -269,56 +289,52 @@ async def get_multipy_async(index, title):
     check_month = int(task_month)
     task_year = await get_var_from_database(index, "task_year", True)
     check_year = int(task_year)
-    if not out_of_data:
-        task_month_int = int(task_month)
-        task_month = await recognise_month(task_month)
-        if Global.last_day == task_day and Global.last_month == task_month and Global.last_year == task_year:
-            if Global.open_date:
-                week_day = await get_week_day(task_year, task_month_int, int(task_day))
-                if int(task_year) == datetime.now().year:
-                    task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                        task_month) + "</em>"
-                                 + " :</strong>" + "\n\n")
-                else:
-                    task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                        task_month) + " " + str(task_year) + "го года" + "</em>"
-                                 + " :</strong>" + "\n\n")
-            else:
-                task_time = ""
-        else:
+    task_month_int = int(task_month)
+    task_month = await recognise_month(task_month)
+    if Global.last_day == task_day and Global.last_month == task_month and Global.last_year == task_year:
+        if Global.open_date:
             week_day = await get_week_day(task_year, task_month_int, int(task_day))
             if int(task_year) == datetime.now().year:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + "</em>"
-                             + " :</strong>" + "\n\n")
+                                + " :</strong>" + "\n\n")
             else:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + " " + str(task_year) + "го года" + "</em>"
-                             + " :</strong>" + "\n\n")
-        Global.last_day = task_day
-        Global.last_month = task_month
-        Global.last_year = task_year
-        item_name = await get_var_from_database(index, "item_name", True)
-        a = "<strong>"
-        b = item_name
-        emoji = str(ITEM_EMOJI[b])
-        item_name = str(a) + str(emoji) + str(b)
-        if item_name == "<strong>🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "<strong>💻Информатика":
-            item_name += " ("
-            group_number = await get_var_from_database(index, "group_number", True)
-            item_name += str(group_number)
-            item_name += "ая группа)"
-        item_name += " : </strong>"
-        task_description = await get_var_from_database(index, "task_description", True)
-        task_description = await recognise_n_tag(task_description)
-        a = "<strong>"
-        b = task_description
-        c = "</strong>\n\n"
-        task_description = str(a) + str(b) + str(c)
-        title += task_time + item_name + task_description
-        # title += task_time + item_name + task_description + await get_hypertext() + "\n\n"
+                                + " :</strong>" + "\n\n")
+        else:
+            task_time = ""
     else:
-        title += ""
+        week_day = await get_week_day(task_year, task_month_int, int(task_day))
+        if int(task_year) == datetime.now().year:
+            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                task_month) + "</em>"
+                            + " :</strong>" + "\n\n")
+        else:
+            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
+                task_month) + " " + str(task_year) + "го года" + "</em>"
+                            + " :</strong>" + "\n\n")
+    Global.last_day = task_day
+    Global.last_month = task_month
+    Global.last_year = task_year
+    item_name = await get_var_from_database(index, "item_name", True)
+    a = "<strong>"
+    b = item_name
+    emoji = str(ITEM_EMOJI[b])
+    item_name = str(a) + str(emoji) + str(b)
+    if item_name == "<strong>🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "<strong>💻Информатика":
+        item_name += " ("
+        group_number = await get_var_from_database(index, "group_number", True)
+        item_name += str(group_number)
+        item_name += "ая группа)"
+    item_name += " : </strong>"
+    task_description = await get_var_from_database(index, "task_description", True)
+    task_description = await recognise_n_tag(task_description)
+    a = "<strong>"
+    b = task_description
+    c = "</strong>\n\n"
+    task_description = str(a) + str(b) + str(c)
+    title += task_time + item_name + task_description
     return title, check_day, check_month, check_year
 
 
@@ -341,21 +357,21 @@ async def check_tasks(school_tasks_screen):
                         title = ""
                         cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                         del_index = cursor.fetchall()
-                        del_index = await get_clean_var(del_index, "to_string", i)
+                        del_index = await get_clean_var(del_index, "to_string", i, True)
                         if del_index not in tasks_to_delete:
                             tasks_to_delete.append(del_index)
                 if check_month < datetime.now().month:
                     title = ""
                     cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                     del_index = cursor.fetchall()
-                    del_index = await get_clean_var(del_index, "to_string", i)
+                    del_index = await get_clean_var(del_index, "to_string", i, True)
                     if del_index not in tasks_to_delete:
                         tasks_to_delete.append(del_index)
             if check_year < datetime.now().year:
                 title = ""
                 cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
                 del_index = cursor.fetchall()
-                del_index = await get_clean_var(del_index, "to_string", i)
+                del_index = await get_clean_var(del_index, "to_string", i, True)
                 if del_index not in tasks_to_delete:
                     tasks_to_delete.append(del_index)
             else:
@@ -424,65 +440,11 @@ async def check_task_status(context):
     check_db = str(context.user_data['db_check'])
     cursor.execute('SELECT * FROM SchoolTasker')
     real_db = cursor.fetchall()
-    real_db = await get_clean_var(real_db, "to_string", False)
+    real_db = await get_clean_var(real_db, "to_string", False, True)
     if check_db != real_db:
         return False
     else:
         return True
-
-
-async def send_update_notification(update, context, status, index, is_order: bool, notification_screen):
-    user = update.effective_user
-    name = await get_username(user.first_name, user.last_name, user.username)
-    await logger_alert([name, user.id], status, index, is_order)
-    task_item = await get_var_from_database(index, "item_name", is_order)
-    task_description = await get_var_from_database(index, "task_description", is_order)
-    group_number = await get_var_from_database(index, "group_number", is_order)
-    task_day = await get_var_from_database(index, "task_day", is_order)
-    task_month = await get_var_from_database(index, "task_month", is_order)
-    task_month_int = int(task_month)
-    task_month = await recognise_month(task_month)
-    task_year = await get_var_from_database(index, "task_year", is_order)
-    id_result = []
-    notification_image = ""
-    # for id_row in users_cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
-    #                                    (user.id,)):
-    for id_row in cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
-        id_row = list(id_row)
-        id_row = int(id_row[0])
-        id_result.append(id_row)
-    for user_id in id_result:
-        cursor.execute("SELECT user_name FROM Users WHERE user_id = ?", (user_id,))
-        name = cursor.fetchall()
-        name = await get_clean_var(name, "to_string", 0)
-        notification_title = "<strong>Здравствуйте, " + str(name) + "!" + "\n"
-        notification_title += await get_notification_title(task_item, task_description,
-                                                           group_number, task_day, task_month_int, task_month,
-                                                           task_year, status)
-        config = RenderConfig(
-            cover=notification_image,
-            chat_id=user_id,
-            description=notification_title,
-        )
-        extra_data = None
-        with suppress(Forbidden):
-            await notification_screen().send(context, config=config, extra_data=extra_data)
-
-
-async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
-                          task_year, notification_screen, task_was_added_screen):
-    new_task_index = await generate_id()
-    hypertime = await get_hypertime(task_month, task_day, task_year)
-    cursor.execute(
-        'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
-        'task_year, hypertime)'
-        'VALUES'
-        '(?,?,?,?,?,?,?,?)',
-        (task_item, new_task_index, group_number, task_description, task_day,
-         task_month, task_year, hypertime,))
-    connection.commit()
-    await send_update_notification(_update, _context, "add", new_task_index, False, notification_screen)
-    return await task_was_added_screen().jump(_update, _context)
 
 
 async def is_informative_username(username):

@@ -1,16 +1,73 @@
+from contextlib import suppress
 from json import dumps
-from sqlite3 import IntegrityError
 from random import randint
-from hammett.core import Button, Screen
-from hammett.core.constants import SourcesTypes
+from sqlite3 import IntegrityError
+from telegram.error import Forbidden
+from backend import *
+from constants import *
+from extensions import STCarouselWidget
+from hammett.core import Screen, Button
+from hammett.core.constants import SourcesTypes, RenderConfig
 from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
-from backend import *
 from settings import ADMIN_GROUP, MEDIA_ROOT
-from constants import *
-from extensions import STCarouselWidget
-from time import sleep
+
+
+async def send_update_notification(update, context, status, index, is_order: bool):
+    user = update.effective_user
+    name = await get_username(user.first_name, user.last_name, user.username)
+    await logger_alert([name, user.id], status, index, is_order)
+    task_item = await get_var_from_database(index, "item_name", is_order)
+    task_description = await get_var_from_database(index, "task_description", is_order)
+    group_number = await get_var_from_database(index, "group_number", is_order)
+    task_day = await get_var_from_database(index, "task_day", is_order)
+    task_month = await get_var_from_database(index, "task_month", is_order)
+    task_month_int = int(task_month)
+    task_month = await recognise_month(task_month)
+    task_year = await get_var_from_database(index, "task_year", is_order)
+    id_result = []
+    notification_image = ""
+    # for id_row in cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
+    #                              (user.id,)):
+    for id_row in cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
+        id_row = list(id_row)
+        id_row = int(id_row[0])
+        id_result.append(id_row)
+    for user_id in id_result:
+        cursor.execute("SELECT user_name FROM Users WHERE user_id = ?", (user_id,))
+        name = cursor.fetchall()
+        name = await get_clean_var(name, "to_string", 0, True)
+        notification_title = "<strong>Здравствуйте, " + str(name) + "!" + "\n"
+        notification_title += await get_notification_title(task_item, task_description,
+                                                           group_number, task_day, task_month_int, task_month,
+                                                           task_year, status)
+        ns_keyboard = [[Button("⬅На главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)]]
+        config = RenderConfig(
+            cover=notification_image,
+            chat_id=user_id,
+            description=notification_title,
+            keyboard=ns_keyboard
+        )
+        extra_data = None
+        with suppress(Forbidden):
+            await NotificationScreen().send(context, config=config, extra_data=extra_data)
+
+
+async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
+                          task_year):
+    new_task_index = await generate_id()
+    hypertime = await get_hypertime(task_month, task_day, task_year)
+    cursor.execute(
+        'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
+        'task_year, hypertime)'
+        'VALUES'
+        '(?,?,?,?,?,?,?,?)',
+        (task_item, new_task_index, group_number, task_description, task_day,
+         task_month, task_year, hypertime,))
+    connection.commit()
+    await send_update_notification(_update, _context, "add", new_task_index, False)
+    return await TaskWasAdded().jump(_update, _context)
 
 
 class BaseScreen(Screen):
@@ -19,18 +76,11 @@ class BaseScreen(Screen):
 
 
 class NotificationScreen(BaseScreen):
-    description = "_"
-
-    async def add_default_keyboard(self, _update, _context):
-        return [
-            [
-                Button("⬅На главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)
-            ]
-        ]
+    pass
 
 
 class NewsNotificationScreen(BaseScreen):
-    description = "_"
+    pass
 
 
 class TaskCantBeChanged(BaseScreen):
@@ -74,10 +124,7 @@ class MainMenu(StartMixin, BaseScreen):
                 config.description = GREET_ADMIN_LATEST[randint(0, 2)]
             else:
                 config.description = GREET_ANONIM_LATEST[randint(0, 2)]
-        return config
-
-    async def add_default_keyboard(self, _update, _context):
-        return [
+        config.keyboard = [
             [
                 Button('Зайти в задачник📓', self.school_tasks,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE),
@@ -100,6 +147,7 @@ class MainMenu(StartMixin, BaseScreen):
                        source_type=SourcesTypes.GOTO_SOURCE_TYPE)
             ]
         ]
+        return config
 
     @register_button_handler
     async def school_tasks(self, update, context):
@@ -108,22 +156,22 @@ class MainMenu(StartMixin, BaseScreen):
 
     async def start(self, update, context):
         """Replies to the /start command. """
-        if update.message.text[-1] == "1":
-            sleep(1)
-            return await TaskMedia().jump(update, context)
+        try:
+            user = update.message.from_user
+        except AttributeError:
+            # When the start handler is invoked through editing
+            # the message with the /start command.
+            user = update.edited_message.from_user
+        user_name = await get_username(user.first_name, user.last_name, user.username)
+        if str(user.id) in ADMIN_GROUP:
+            LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
         else:
-            try:
-                user = update.message.from_user
-            except AttributeError:
-                # When the start handler is invoked through editing
-                # the message with the /start command.
-                user = update.edited_message.from_user
-            user_name = await get_username(user.first_name, user.last_name, user.username)
-            if str(user.id) in ADMIN_GROUP:
-                LOGGER.info('The user %s (%s) was added to the admin group.', user_name, user.id)
-            else:
-                LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
-            return await super().start(update, context)
+            LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
+        return await super().start(update, context)
+
+    @media_handler
+    async def test(self, update, context):
+        return await Options().goto(update, context)
 
 
 class SocialMedia(BaseScreen):
@@ -198,7 +246,7 @@ class Options(BaseScreen):
         notification_button_title = str()
         cursor.execute("SELECT user_permission FROM Users WHERE user_id = ?", (user.id,))
         notification_permission = cursor.fetchone()
-        notification_permission = await get_clean_var(notification_permission, "to_int", False)
+        notification_permission = await get_clean_var(notification_permission, "to_int", False, True)
         if notification_permission == 0:
             notification_button_title = "Включить "
         if notification_permission == 1:
@@ -320,7 +368,7 @@ class AlertAddingOldTask(BaseScreen):
     async def add_old_task(self, _update, _context):
         await ManageSchoolTasksAddDetails().set_stage(_update, _context, 0)
         await add_task_school(_update, _context, self.task_args[0], self.task_args[1], self.task_args[2],
-                              self.task_args[3], self.task_args[4], self.task_args[5], NotificationScreen, TaskWasAdded)
+                              self.task_args[3], self.task_args[4], self.task_args[5])
 
     @register_button_handler
     async def change_task(self, _update, _context):
@@ -332,8 +380,7 @@ class AlertAddingOldTask(BaseScreen):
         cursor.execute("UPDATE SchoolTasker set hypertime = ? WHERE item_index = ?",
                        (hypertime, self.current_index,))
         connection.commit()
-        await send_update_notification(_update, _context, "change", self.current_index, False,
-                                       NotificationScreen)
+        await send_update_notification(_update, _context, "change", self.current_index, False)
         return await TaskWasChanged().jump(_update, _context)
 
 
@@ -634,7 +681,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                 await self.set_stage(update, context, 0)
                                 await add_task_school(update, context, self.task_item, self.task_description,
                                                       self.group_number, self.task_day, self.task_month,
-                                                      self.task_year, NotificationScreen, TaskWasAdded)
+                                                      self.task_year)
                             else:
                                 await go_to_alert([self.task_item, self.task_description, self.group_number,
                                                    self.task_day, self.task_month, self.task_year],
@@ -653,8 +700,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     cursor.execute("UPDATE SchoolTasker set task_description = ? WHERE item_index = ?",
                                    (self.task_description, formattered_index,))
                     connection.commit()
-                    await send_update_notification(update, context, "change", formattered_index, False,
-                                                   NotificationScreen)
+                    await send_update_notification(update, context, "change", formattered_index, False)
                     return await TaskWasChanged().jump(update, context)
             elif Global.is_changing_day:
                 self.task_day = update.message.text
@@ -687,7 +733,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                                (hypertime, formattered_index,))
                                 connection.commit()
                                 await send_update_notification(update, context, "change", formattered_index,
-                                                               False, NotificationScreen)
+                                                               False)
                                 return await TaskWasChanged().jump(update, context)
                             else:
                                 self.task_item = await get_var_from_database(deletion_index, "item_name", True)
@@ -747,7 +793,7 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                                                (self.task_year, formattered_index,))
                                 connection.commit()
                             await send_update_notification(update, context, "change", formattered_index,
-                                                           False, NotificationScreen)
+                                                           False)
                             return await TaskWasChanged().jump(update, context)
                         else:
                             self.task_item = await get_var_from_database(formattered_index, "item_name", False)
@@ -790,7 +836,7 @@ class ManageSchoolTasksRemove(BaseScreen):
         cursor.execute('SELECT * FROM SchoolTasker')
         db_check = cursor.fetchall()
         try:
-            db_check = await get_clean_var(db_check, "to_string", False)
+            db_check = await get_clean_var(db_check, "to_string", False, True)
         except IndexError:
             db_check = ""
         keyboard = []
@@ -958,7 +1004,7 @@ class ManageSchoolTasksChangeMain(BaseScreen):
         cursor.execute('SELECT * FROM SchoolTasker')
         db_check = cursor.fetchall()
         try:
-            db_check = await get_clean_var(db_check, "to_string", False)
+            db_check = await get_clean_var(db_check, "to_string", False, True)
         except IndexError:
             db_check = ""
         keyboard = []
@@ -1071,8 +1117,7 @@ class ManageSchoolTasksChangeItem(BaseScreen):
             cursor.execute("UPDATE SchoolTasker set item_name = ? WHERE item_index = ?",
                            (context.user_data['task_item'], new_index,))
             connection.commit()
-            await send_update_notification(update, context, "change", new_index, False,
-                                           NotificationScreen)
+            await send_update_notification(update, context, "change", new_index, False)
             return await TaskWasChanged().goto(update, context)
 
 
@@ -1187,8 +1232,7 @@ class ManageSchoolTasksChangeGroupNumber(BaseScreen):
             cursor.execute("UPDATE SchoolTasker SET group_number = ? WHERE item_index = ?",
                            (context.user_data["group_number"], formattered_index,))
             connection.commit()
-            await send_update_notification(update, context, "change", int(formattered_index), False,
-                                           NotificationScreen)
+            await send_update_notification(update, context, "change", int(formattered_index), False)
             return await TaskWasChanged().goto(update, context)
 
     @register_button_handler
