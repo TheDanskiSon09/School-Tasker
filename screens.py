@@ -8,9 +8,10 @@ from constants import *
 from hammett_extensions.carousel import STCarouselWidget
 from hammett.core import Screen, Button
 from hammett.core.constants import SourcesTypes, RenderConfig
+from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
-from hammett_extensions.handlers import register_button_handler, register_typing_handler, register_input_handler
+from hammett_extensions.handlers import register_real_input_handler
 from settings import ADMIN_GROUP, MEDIA_ROOT
 
 
@@ -169,12 +170,29 @@ class MainMenu(StartMixin, BaseScreen):
             LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
         return await super().start(update, context)
 
-    @register_input_handler
-    async def test(self, update, context):
+    @register_real_input_handler
+    async def catch_media(self, update, context):
         if not update.message.text:
-            print(dir(update.message))
-            bot = update.message.get_bot()
-            # file = await bot.get_file(update.message.id)
+            message = update.message
+            if message.photo:
+                file = message.photo[-1]
+                file_id = file.file_id
+                file = await context.bot.get_file(file_id)
+                title = "FILE" + str(randint(0, 99)) + ".jpg"
+                await file.download_to_drive(title)
+                await update.message.reply_text("GOT IMAGE!")
+            # elif message.video:
+            #     file_id = message.video.file_id
+            #     file = await context.bot.get_file(file_id)
+            #     await file.download('video.mp4')
+            #     await update.message.reply_text("GOT VIDEO!")
+            # elif message.audio:
+            #     file_id = message.audio.file_id
+            #     file = await context.bot.get_file(file_id)
+            #     await file.download('audio.mp3')
+            #     await update.message.reply_text("GOT AUDIO!")
+            else:
+                await update.message.reply_text("UNSUPORRTED FILE!")
 
 
 class SocialMedia(BaseScreen):
