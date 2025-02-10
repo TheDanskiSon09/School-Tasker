@@ -11,7 +11,7 @@ from hammett.core.constants import SourcesTypes, RenderConfig
 from hammett.core.handlers import register_button_handler, register_typing_handler
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
-from hammett_extensions.handlers import register_real_input_handler
+from hammett_extensions.handlers import register_input_handler
 from settings import ADMIN_GROUP, MEDIA_ROOT
 
 
@@ -72,8 +72,9 @@ async def add_task_school(_update, _context, task_item, task_description, group_
 
 
 class BaseScreen(Screen):
-    cache_covers = False
+    cache_covers = True
     hide_keyboard = True
+    cover = 'logo/school_tasker_logo.webp'
 
 
 class NotificationScreen(BaseScreen):
@@ -170,7 +171,7 @@ class MainMenu(StartMixin, BaseScreen):
             LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
         return await super().start(update, context)
 
-    @register_real_input_handler
+    @register_input_handler
     async def catch_media(self, update, context):
         if not update.message.text:
             message = update.message
@@ -181,18 +182,18 @@ class MainMenu(StartMixin, BaseScreen):
                 title = "FILE" + str(randint(0, 99)) + ".jpg"
                 await file.download_to_drive(title)
                 await update.message.reply_text("GOT IMAGE!")
-            # elif message.video:
-            #     file_id = message.video.file_id
-            #     file = await context.bot.get_file(file_id)
-            #     await file.download('video.mp4')
-            #     await update.message.reply_text("GOT VIDEO!")
-            # elif message.audio:
-            #     file_id = message.audio.file_id
-            #     file = await context.bot.get_file(file_id)
-            #     await file.download('audio.mp3')
-            #     await update.message.reply_text("GOT AUDIO!")
-            else:
-                await update.message.reply_text("UNSUPORRTED FILE!")
+    #         elif message.video:
+    #             file_id = message.video.file_id
+    #             file = await context.bot.get_file(file_id)
+    #             await file.download_to_drive('video.mp4')
+    #             await update.message.reply_text("GOT VIDEO!")
+    #         # elif message.audio:
+    #         #     file_id = message.audio.file_id
+    #         #     file = await context.bot.get_file(file_id)
+    #         #     await file.download('audio.mp3')
+    #         #     await update.message.reply_text("GOT AUDIO!")
+    #         else:
+    #             await update.message.reply_text("UNSUPORRTED FILE!")
 
 
 class SocialMedia(BaseScreen):
@@ -377,12 +378,12 @@ class AlertAddingOldTask(BaseScreen):
     @register_button_handler
     async def change_task_time(self, _update, _context):
         await ManageSchoolTasksAddDetails().set_stage(_update, _context, 1)
-        ManageSchoolTasksAddDetails.task_item = self.task_args[0]
-        ManageSchoolTasksAddDetails.task_description = self.task_args[1]
-        ManageSchoolTasksAddDetails.group_number = self.task_args[2]
-        ManageSchoolTasksAddDetails.task_day = self.task_args[3]
-        ManageSchoolTasksAddDetails.task_month = self.task_args[4]
-        ManageSchoolTasksAddDetails.task_year = self.task_args[5]
+        # ManageSchoolTasksAddDetails.task_item = self.task_args[0]
+        # ManageSchoolTasksAddDetails.task_description = self.task_args[1]
+        # ManageSchoolTasksAddDetails.group_number = self.task_args[2]
+        # ManageSchoolTasksAddDetails.task_day = self.task_args[3]
+        # ManageSchoolTasksAddDetails.task_month = self.task_args[4]
+        # ManageSchoolTasksAddDetails.task_year = self.task_args[5]
         return await ManageSchoolTasksAddDetails().goto(_update, _context)
 
     @register_button_handler
@@ -455,53 +456,53 @@ class ManageSchoolTasksAdd(BaseScreen):
             [
                 Button("Алгебра", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Алгебра"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Алгебра"})),
                 Button("Английский язык", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Английский язык"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Английский язык"})),
                 Button("Биология", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Биология"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Биология"})),
                 Button("География", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "География"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "География"})),
                 Button("Геометрия", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Геометрия"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Геометрия"})),
             ],
             [
                 Button("Информатика", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Информатика"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Информатика"})),
                 Button("История", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "История"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "История"})),
                 Button("Литература", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Литература"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Литература"})),
                 Button("ОБЗР", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "ОБЗР"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "ОБЗР"})),
                 Button("Обществознание", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Обществознание"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Обществознание"})),
             ],
             [
                 Button("Решение задач повышенного уровня по алгебре", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Решение задач повышенного уровня по алгебре"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Решение задач повышенного уровня по алгебре"})),
                 Button("Русский язык", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Русский язык"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Русский язык"})),
                 Button("Технология", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Технология"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Технология"})),
                 Button("Физика", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Физика"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Физика"})),
                 Button("Химия", self.get_school_item,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({'task_item': "Химия"})),
+                       payload=dumps({'ADDING_TASK_TASK_ITEM': "Химия"})),
             ],
             [
                 Button('⬅️ Назад', ManageSchoolTasksMain,
@@ -511,8 +512,9 @@ class ManageSchoolTasksAdd(BaseScreen):
 
     @register_button_handler
     async def get_school_item(self, update, context):
-        await main_get_payload(self, update, context, 'add_task_item', 'task_item')
-        if context.user_data["task_item"] == "Английский язык" or context.user_data["task_item"] == "Информатика":
+        await main_get_payload(self, update, context, 'add_task_item', 'ADDING_TASK_TASK_ITEM')
+        if (context.user_data["ADDING_TASK_TASK_ITEM"] == "Английский язык" or
+                context.user_data["ADDING_TASK_TASK_ITEM"] == "Информатика"):
             return await ManageSchoolTasksAddGroupNumber().goto(update, context)
         else:
             return await ManageSchoolTasksAddDetails().goto(update, context)
@@ -524,24 +526,24 @@ class ManageSchoolTasksAddGroupNumber(BaseScreen):
     async def add_default_keyboard(self, _update, _context):
         keyboard = []
         buttons = []
-        if _context.user_data["task_item"] == "Английский язык":
+        if _context.user_data["ADDING_TASK_TASK_ITEM"] == "Английский язык":
             buttons.append(
                 Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({"group_number": 1})))
+                       payload=dumps({"ADDING_TASK_GROUP_NUMBER": 1})))
             buttons.append(
                 Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({"group_number": 2})))
-        if _context.user_data['task_item'] == "Информатика":
+                       payload=dumps({"ADDING_TASK_GROUP_NUMBER": 2})))
+        if _context.user_data['ADDING_TASK_TASK_ITEM'] == "Информатика":
             buttons.append(
                 Button('Группа 1️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({"group_number": 1})))
+                       payload=dumps({"ADDING_TASK_GROUP_NUMBER": 1})))
             buttons.append(
                 Button('Группа 2️⃣', self.get_group_number,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-                       payload=dumps({"group_number": 2})))
+                       payload=dumps({"ADDING_TASK_GROUP_NUMBER": 2})))
         keyboard.append(buttons)
         keyboard.append(
             [
@@ -552,7 +554,7 @@ class ManageSchoolTasksAddGroupNumber(BaseScreen):
 
     @register_button_handler
     async def get_group_number(self, _update, _context):
-        await main_get_payload(self, _update, _context, 'add_task_group_number', 'group_number')
+        await main_get_payload(self, _update, _context, 'add_task_group_number', 'ADDING_TASK_GROUP_NUMBER')
         return await ManageSchoolTasksAddDetails().goto(_update, _context)
 
     @register_button_handler
@@ -593,12 +595,6 @@ class ManageSchoolTasksAddDetails(BaseScreen):
     staged_twice = False
     is_adding_task = False
     current_stage = 0
-    task_item = str()
-    task_description = str()
-    group_number = int(1)
-    task_day = str()
-    task_month = str()
-    task_year = int()
 
     async def add_default_keyboard(self, _update, _context):
         if not Global.is_changing_day and not Global.is_changing_month:
@@ -650,24 +646,18 @@ class ManageSchoolTasksAddDetails(BaseScreen):
             deletion_index = int()
         if str(user.id) in ADMIN_GROUP:
             if self.is_adding_task:
-                with suppress(KeyError):
-                    self.task_item = context.user_data['task_item']
-                try:
-                    if self.task_item == "Английский язык" or self.task_item == "Информатика":
-                        self.group_number = context.user_data['group_number']
-                    else:
-                        self.group_number = 1
-                except KeyError:
-                    self.group_number = 1
+                if (context.user_data['ADDING_TASK_TASK_ITEM'] != "Английский язык" and
+                        context.user_data['ADDING_TASK_TASK_ITEM'] != "Информатика"):
+                    context.user_data['ADDING_TASK_GROUP_NUMBER'] = 1
                 if self.current_stage == 0:
-                    self.task_description = update.message.text
+                    context.user_data["ADDING_TASK_TASK_DESCRIPTION"] = update.message.text
                     await self.set_stage(update, context, 1)
                     return await ManageSchoolTasksAddDetails().jump(update, context)
                 elif self.current_stage == 1:
-                    self.task_day = update.message.text
+                    context.user_data["ADDING_TASK_TASK_DAY"] = update.message.text
                     try:
-                        self.task_day = int(self.task_day)
-                        if self.task_day > 31 or self.task_day < 1:
+                        check_day = int(context.user_data["ADDING_TASK_TASK_DAY"])
+                        if check_day > 31 or check_day < 1:
                             self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
                                                 "дней!\nНа какое число дано задание?</strong>")
                             return await ManageSchoolTasksAddDetails().jump(update, context)
@@ -678,34 +668,50 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                         self.description = "<strong>Пожалуйста, введите число, на день который дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                 else:
-                    self.task_month = update.message.text
+                    context.user_data["ADDING_TASK_TASK_MONTH"] = update.message.text
                     try:
-                        self.task_month = int(await get_user_month(self.task_month))
+                        context.user_data["ADDING_TASK_TASK_MONTH"] = int(
+                            await get_user_month(context.user_data["ADDING_TASK_TASK_MONTH"]))
                     except TypeError:
                         self.description = "<strong>Пожалуйста, введите месяц, на которое дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
                     try:
-                        if int(self.task_day) > int(monthrange(int(strftime("%Y", gmtime())),
-                                                               int(self.task_month))[1]):
+                        if int(context.user_data["ADDING_TASK_TASK_DAY"]) > int(
+                                monthrange(int(strftime("%Y", gmtime())),
+                                           int(context.user_data["ADDING_TASK_TASK_MONTH"]))[1]):
                             self.description = ("<strong>Извините, но в данном месяце не может быть такое количество "
                                                 "дней!\nНа какое число дано задание?</strong>")
                             return await ManageSchoolTasksAddDetails().jump(update, context)
                         else:
-                            if datetime.now().month == 12 and int(self.task_month) < 9:
-                                self.task_year = datetime.now().year + 1
+                            if datetime.now().month == 12 and int(context.user_data["ADDING_TASK_TASK_MONTH"]) < 9:
+                                # self.task_year = datetime.now().year + 1
+                                context.user_data["ADDING_TASK_TASK_YEAR"] = str(datetime.now().year + 1)
                             else:
-                                self.task_year = datetime.now().year
-                            check = await check_task_validity(int(self.task_day), self.task_month, self.task_year)
+                                # self.task_year = datetime.now().year
+                                context.user_data["ADDING_TASK_TASK_YEAR"] = str(datetime.now().year)
+                            check = await check_task_validity(int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                                                              context.user_data["ADDING_TASK_TASK_MONTH"],
+                                                              context.user_data["ADDING_TASK_TASK_YEAR"])
                             self.is_adding_task = False
                             if check:
                                 self.description = "<strong>Введите текст задания:</strong>"
                                 await self.set_stage(update, context, 0)
-                                await add_task_school(update, context, self.task_item, self.task_description,
-                                                      self.group_number, self.task_day, self.task_month,
-                                                      self.task_year)
+                                # await add_task_school(update, context, self.task_item, self.task_description,
+                                #                       self.group_number, self.task_day, self.task_month,
+                                #                       self.task_year)
+                                await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
+                                                      context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                                                      context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                                                      int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                                                      int(context.user_data["ADDING_TASK_TASK_MONTH"]),
+                                                      int(context.user_data["ADDING_TASK_TASK_YEAR"]))
                             else:
-                                await go_to_alert([self.task_item, self.task_description, self.group_number,
-                                                   self.task_day, self.task_month, self.task_year],
+                                await go_to_alert([context.user_data["ADDING_TASK_TASK_ITEM"],
+                                                   context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                                                   context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                                                   context.user_data["ADDING_TASK_TASK_DAY"],
+                                                   context.user_data["ADDING_TASK_TASK_MONTH"],
+                                                   context.user_data["ADDING_TASK_TASK_YEAR"]],
                                                   "add", deletion_index, update, context)
                     except ValueError:
                         self.description = "<strong>Пожалуйста, введите число, на месяц которого дано задание!</strong>"
