@@ -1,10 +1,11 @@
-from contextlib import suppress
 from json import dumps
+from os import makedirs
 from random import randint
 from sqlite3 import IntegrityError
 from telegram.error import Forbidden
 from backend import *
 from constants import *
+from contextlib import suppress
 from hammett_extensions.carousel import STCarouselWidget
 from hammett.core import Screen, Button
 from hammett.core.constants import SourcesTypes, RenderConfig
@@ -74,7 +75,7 @@ async def add_task_school(_update, _context, task_item, task_description, group_
 class BaseScreen(Screen):
     cache_covers = True
     hide_keyboard = True
-    cover = 'logo/school_tasker_logo.webp'
+    cover = 'media/school_tasker_logo.webp'
 
 
 class NotificationScreen(BaseScreen):
@@ -171,17 +172,18 @@ class MainMenu(StartMixin, BaseScreen):
             LOGGER.info('The user %s (%s) was added to the anonim group.', user_name, user.id)
         return await super().start(update, context)
 
-    @register_input_handler
-    async def catch_media(self, update, context):
-        if not update.message.text:
-            message = update.message
-            if message.photo:
-                file = message.photo[-1]
-                file_id = file.file_id
-                file = await context.bot.get_file(file_id)
-                title = "FILE" + str(randint(0, 99)) + ".jpg"
-                await file.download_to_drive(title)
-                await update.message.reply_text("GOT IMAGE!")
+    # @register_input_handler
+    # @check_media_screen
+    # async def catch_media(self, update, context):
+    #     if not update.message.text:
+    #         message = update.message
+    #         if message.photo:
+    #             file = message.photo[-1]
+    #             file_id = file.file_id
+    #             file = await context.bot.get_file(file_id)
+    #             title = "FILE" + str(randint(0, 99)) + ".jpg"
+    #             await file.download_to_drive(title)
+    #             await update.message.reply_text("GOT IMAGE!")
     #         elif message.video:
     #             file_id = message.video.file_id
     #             file = await context.bot.get_file(file_id)
@@ -696,23 +698,25 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                             if check:
                                 self.description = "<strong>Введите текст задания:</strong>"
                                 await self.set_stage(update, context, 0)
+                                context.user_data["IS_IN_MEDIA_SCREEN"] = True
+                                return await CatchMedia().jump(update, context)
                                 # await add_task_school(update, context, self.task_item, self.task_description,
                                 #                       self.group_number, self.task_day, self.task_month,
                                 #                       self.task_year)
-                                await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
-                                                      context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
-                                                      context.user_data["ADDING_TASK_GROUP_NUMBER"],
-                                                      int(context.user_data["ADDING_TASK_TASK_DAY"]),
-                                                      int(context.user_data["ADDING_TASK_TASK_MONTH"]),
-                                                      int(context.user_data["ADDING_TASK_TASK_YEAR"]))
-                            else:
-                                await go_to_alert([context.user_data["ADDING_TASK_TASK_ITEM"],
-                                                   context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
-                                                   context.user_data["ADDING_TASK_GROUP_NUMBER"],
-                                                   context.user_data["ADDING_TASK_TASK_DAY"],
-                                                   context.user_data["ADDING_TASK_TASK_MONTH"],
-                                                   context.user_data["ADDING_TASK_TASK_YEAR"]],
-                                                  "add", deletion_index, update, context)
+                            #     await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
+                            #                           context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                            #                           context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                            #                           int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                            #                           int(context.user_data["ADDING_TASK_TASK_MONTH"]),
+                            #                           int(context.user_data["ADDING_TASK_TASK_YEAR"]))
+                            # else:
+                            #     await go_to_alert([context.user_data["ADDING_TASK_TASK_ITEM"],
+                            #                        context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                            #                        context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                            #                        context.user_data["ADDING_TASK_TASK_DAY"],
+                            #                        context.user_data["ADDING_TASK_TASK_MONTH"],
+                            #                        context.user_data["ADDING_TASK_TASK_YEAR"]],
+                            #                       "add", deletion_index, update, context)
                     except ValueError:
                         self.description = "<strong>Пожалуйста, введите число, на месяц которого дано задание!</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
@@ -834,6 +838,141 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                     else:
                         self.description = "<strong>На какой месяц дано задание?</strong>"
                         return await ManageSchoolTasksAddDetails().jump(update, context)
+
+
+class CatchMedia(BaseScreen):
+    description = '<strong>Отправьте в чат фотографии, которые нужно закрепить к заданию: </strong>'
+
+    @register_input_handler
+    async def catch_media(self, update, context):
+        with suppress(KeyError):
+            if context.user_data["IS_IN_MEDIA_SCREEN"]:
+                message = update.message
+                if message.photo:
+                    file = message.photo[-1]
+                    file_id = file.file_id
+                    file = await context.bot.get_file(file_id)
+                    try:
+                        context.user_data["MEDIA_ADD"].append(file)
+                    except KeyError:
+                        context.user_data["MEDIA_ADD"] = []
+                        context.user_data["MEDIA_ADD"].append(file)
+                    for item in context.user_data["MEDIA_ADD"]:
+                        print(item)
+                    new_config = RenderConfig()
+                    new_config.description = "✅<strong>Успешно получено! Что вы ещё хотите сделать?</strong>"
+                    new_config.keyboard = [
+                        [
+                            Button("Создать задание➕", self.add_school_task,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ],
+                        [
+                            Button("Удалить присланные фотографии🗑️", self.delete_media,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ],
+                        [
+                            Button("⬅Назад", self.go_to_task_screen,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ]
+                    ]
+                    return await CatchMedia().send(context, config=new_config, extra_data=None)
+
+    @register_button_handler
+    async def go_to_task_screen(self, update, context):
+        context.user_data["MEDIA_ADD"] = []
+        return await ManageSchoolTasksAdd().goto(update, context)
+
+    @register_button_handler
+    async def delete_media(self, update, context):
+        new_config = RenderConfig()
+        new_config.description = '<strong>Вы точно уверены, что хотите удалить присланные Вами изображения?</strong>'
+        new_config.keyboard = [
+            [
+                Button('Удалить🗑️', self.confirm_delete,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button('⬅Назад', self.go_back,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ]
+        ]
+        return await CatchMedia().send(context, config=new_config, extra_data=None)
+
+    @register_button_handler
+    async def go_back(self, update, context):
+        new_config = RenderConfig()
+        new_config.description = self.description
+        new_config.keyboard = [
+                        [
+                            Button("Создать задание➕", self.add_school_task,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ],
+                        [
+                            Button("Удалить присланные фотографии🗑️", self.delete_media,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ],
+                        [
+                            Button("⬅Назад", self.go_to_task_screen,
+                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+                        ]
+                    ]
+        return await CatchMedia().send(context, config=new_config, extra_data=None)
+
+    @register_button_handler
+    async def confirm_delete(self, update, context):
+        context.user_data["MEDIA_ADD"] = []
+        new_config = RenderConfig()
+        new_config.description = "✅<strong>Фотографии успешно удалены! Что вы ещё хотите сделать?</strong>"
+        new_config.keyboard = [
+            [
+                Button("Создать задание➕", self.add_school_task,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅Назад", self.go_to_task_screen,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ]
+        ]
+        return await CatchMedia().send(context, config=new_config, extra_data=None)
+
+    @register_button_handler
+    async def add_school_task(self, update, context):
+        check = await check_task_validity(int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                                          context.user_data["ADDING_TASK_TASK_MONTH"],
+                                          context.user_data["ADDING_TASK_TASK_YEAR"])
+        if check:
+            token = str(await generate_id())
+            makedirs("media/" + token)
+            for file in context.user_data["MEDIA_ADD"]:
+                title = "media/" + token + "/FILE" + str(randint(0, 99)) + ".webp"
+                await file.download_to_drive(title)
+            del context.user_data["MEDIA_ADD"]
+            await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
+                                  context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                                  context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                                  int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                                  int(context.user_data["ADDING_TASK_TASK_MONTH"]),
+                                  int(context.user_data["ADDING_TASK_TASK_YEAR"]))
+        else:
+            await go_to_alert([context.user_data["ADDING_TASK_TASK_ITEM"],
+                               context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
+                               context.user_data["ADDING_TASK_GROUP_NUMBER"],
+                               context.user_data["ADDING_TASK_TASK_DAY"],
+                               context.user_data["ADDING_TASK_TASK_MONTH"],
+                               context.user_data["ADDING_TASK_TASK_YEAR"]],
+                              "add", context.user_data['deletion_index'], update, context)
+
+    async def add_default_keyboard(self, _update, _context):
+        return [
+            [
+                Button("Пропустить данный шаг и добавить задание➕", self.add_school_task,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅Назад", ManageSchoolTasksAdd,
+                       source_type=SourcesTypes.GOTO_SOURCE_TYPE)
+            ]
+        ]
 
 
 class TaskWasAdded(BaseScreen):

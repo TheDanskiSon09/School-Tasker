@@ -33,30 +33,30 @@ user_name TEXT
 LOGGER = getLogger('hammett')
 
 
-def media_handler(func):
-    async def wrapper(self, update, context, *args, **kwargs):
-        message = update.message
-        if message.photo:
-            file = message.photo[-1]
-            file_id = file.file_id
-            file = await context.bot.get_file(file_id)
-            await file.download('image.jpg')
-            await update.message.reply_text("GOT IMAGE!")
-        elif message.video:
-            file_id = message.video.file_id
-            file = await context.bot.get_file(file_id)
-            await file.download('video.mp4')
-            await update.message.reply_text("GOT VIDEO!")
-
-        elif message.audio:
-            file_id = message.audio.file_id
-            file = await context.bot.get_file(file_id)
-            await file.download('audio.mp3')
-            await update.message.reply_text("GOT AUDIO!")
-        else:
-            await update.message.reply_text("UNSUPORRTED FILE!")
-        return await func(self, update, context, *args, **kwargs)
-    return wrapper
+# def media_handler(func):
+#     async def wrapper(self, update, context, *args, **kwargs):
+#         message = update.message
+#         if message.photo:
+#             file = message.photo[-1]
+#             file_id = file.file_id
+#             file = await context.bot.get_file(file_id)
+#             await file.download('image.jpg')
+#             await update.message.reply_text("GOT IMAGE!")
+#         elif message.video:
+#             file_id = message.video.file_id
+#             file = await context.bot.get_file(file_id)
+#             await file.download('video.mp4')
+#             await update.message.reply_text("GOT VIDEO!")
+#
+#         elif message.audio:
+#             file_id = message.audio.file_id
+#             file = await context.bot.get_file(file_id)
+#             await file.download('audio.mp3')
+#             await update.message.reply_text("GOT AUDIO!")
+#         else:
+#             await update.message.reply_text("UNSUPORRTED FILE!")
+#         return await func(self, update, context, *args, **kwargs)
+#     return wrapper
 
 
 class Global:
@@ -297,11 +297,11 @@ async def get_multipy_async(index, title):
             if int(task_year) == datetime.now().year:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + "</em>"
-                                + " :</strong>" + "\n\n")
+                             + " :</strong>" + "\n\n")
             else:
                 task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                     task_month) + " " + str(task_year) + "го года" + "</em>"
-                                + " :</strong>" + "\n\n")
+                             + " :</strong>" + "\n\n")
         else:
             task_time = ""
     else:
@@ -309,11 +309,11 @@ async def get_multipy_async(index, title):
         if int(task_year) == datetime.now().year:
             task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                 task_month) + "</em>"
-                            + " :</strong>" + "\n\n")
+                         + " :</strong>" + "\n\n")
         else:
             task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
                 task_month) + " " + str(task_year) + "го года" + "</em>"
-                            + " :</strong>" + "\n\n")
+                         + " :</strong>" + "\n\n")
     Global.last_day = task_day
     Global.last_month = task_month
     Global.last_year = task_year
