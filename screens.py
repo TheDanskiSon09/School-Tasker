@@ -1,9 +1,11 @@
 from json import dumps
-from os import makedirs
+from os import makedirs, listdir
+from shutil import rmtree
 from random import randint
 from sqlite3 import IntegrityError
 from telegram.error import Forbidden
 from backend import *
+from os.path import exists
 from constants import *
 from contextlib import suppress
 from hammett_extensions.carousel import STCarouselWidget
@@ -29,7 +31,6 @@ async def send_update_notification(update, context, status, index, is_order: boo
     task_month = await recognise_month(task_month)
     task_year = await get_var_from_database(index, "task_year", is_order)
     id_result = []
-    notification_image = ""
     # for id_row in cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1 AND user_id != ?',
     #                              (user.id,)):
     for id_row in cursor.execute('SELECT user_id FROM Users WHERE user_permission = 1'):
@@ -44,31 +45,47 @@ async def send_update_notification(update, context, status, index, is_order: boo
         notification_title += await get_notification_title(task_item, task_description,
                                                            group_number, task_day, task_month_int, task_month,
                                                            task_year, status)
-        ns_keyboard = [[Button("⬅На главный экран", MainMenu, source_type=SourcesTypes.JUMP_SOURCE_TYPE)]]
-        config = RenderConfig(
-            cover=notification_image,
-            chat_id=user_id,
-            description=notification_title,
-            keyboard=ns_keyboard
+        ns_config = RenderConfig(
+            chat_id=user_id
         )
-        extra_data = None
+        if exists("media/" + str(index) + '/'):
+            add_images = listdir('media/' + str(index) + "/")
+            for image in add_images:
+                path = str(index) + "/" + str(image)
+                item = [MEDIA_ROOT / path, ""]
+                NotificationScreen.images.append(item)
+        else:
+            NotificationScreen.images = [
+                [MEDIA_ROOT / 'school_tasker_logo.webp', ""]
+            ]
+        NotificationScreen.description = notification_title
         with suppress(Forbidden):
-            await NotificationScreen().send(context, config=config, extra_data=extra_data)
+            await NotificationScreen().send(context, config=ns_config, extra_data=None)
 
 
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
                           task_year):
-    new_task_index = await generate_id()
-    hypertime = await get_hypertime(task_month, task_day, task_year)
+    hypertime = await get_hypertime(int(task_month), int(task_day), int(task_year))
     cursor.execute(
         'INSERT INTO SchoolTasker (item_name, item_index, group_number, task_description, task_day, task_month, '
         'task_year, hypertime)'
         'VALUES'
         '(?,?,?,?,?,?,?,?)',
-        (task_item, new_task_index, group_number, task_description, task_day,
+        (task_item, _context.user_data["ADD_TASK_ITEM_INDEX"], group_number, task_description, task_day,
          task_month, task_year, hypertime,))
     connection.commit()
-    await send_update_notification(_update, _context, "add", new_task_index, False)
+    with suppress(KeyError):
+        if _context.user_data["MEDIA_ADD"]:
+            makedirs("media/" + _context.user_data["ADD_TASK_ITEM_INDEX"])
+            for file in _context.user_data["MEDIA_ADD"]:
+                filename = _context.user_data["ADD_TASK_ITEM_INDEX"] + "/" + str(await generate_id()) + ".webp"
+                title = "media/" + filename
+                await file.download_to_drive(title)
+    with suppress(KeyError):
+        _context.user_data["MEDIA_ADD"].clear()
+    _context.user_data["IS_IN_MEDIA_SCREEN"] = False
+    await send_update_notification(_update, _context, "add", _context.user_data["ADD_TASK_ITEM_INDEX"],
+                                   False)
     return await TaskWasAdded().jump(_update, _context)
 
 
@@ -78,16 +95,12 @@ class BaseScreen(Screen):
     cover = 'media/school_tasker_logo.webp'
 
 
-class NotificationScreen(BaseScreen):
-    pass
-
-
 class NewsNotificationScreen(BaseScreen):
     pass
 
 
 class TaskCantBeChanged(BaseScreen):
-    description = "<strong>Извините, но я не могу выполнить Ваш запрос - пожалуйста, повторите попытку</strong>"
+    description = "<strong>Я не могу выполнить Ваш запрос - пожалуйста, повторите попытку</strong>"
 
     async def add_default_keyboard(self, _update, _context):
         return [
@@ -154,8 +167,7 @@ class MainMenu(StartMixin, BaseScreen):
 
     @register_button_handler
     async def school_tasks(self, update, context):
-        await check_tasks(SchoolTasks)
-        return await SchoolTasks().goto(update, context)
+        await SchoolTasks().check_tasks(update, context, SchoolTasks)
 
     async def start(self, update, context):
         """Replies to the /start command. """
@@ -196,6 +208,12 @@ class MainMenu(StartMixin, BaseScreen):
     #         #     await update.message.reply_text("GOT AUDIO!")
     #         else:
     #             await update.message.reply_text("UNSUPORRTED FILE!")
+
+
+class NotificationScreen(BaseScreen, STCarouselWidget):
+    button_target = MainMenu
+    button_source_type = SourcesTypes.GOTO_SOURCE_TYPE
+    button_title = "⬅На главный экран"
 
 
 class SocialMedia(BaseScreen):
@@ -304,33 +322,124 @@ class Options(BaseScreen):
 
 
 class SchoolTasks(BaseScreen):
-    async def add_default_keyboard(self, _update, _context):
-        return [
-            [
-                Button('⬅️ Вернуться на главный экран', MainMenu,
-                       source_type=SourcesTypes.GOTO_SOURCE_TYPE),
-            ],
-        ]
+
+    async def check_tasks(self, update, context, target_screen):
+        new_config = RenderConfig()
+        new_config.keyboard = []
+        Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
+        database_length = Global.index_store
+        title = str()
+        if database_length < 1:
+            if target_screen:
+                target_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
+                new_config.keyboard = [[Button('⬅️ Вернуться на главный экран', MainMenu,
+                                               source_type=SourcesTypes.GOTO_SOURCE_TYPE)]]
+                return await target_screen().render(update, context, config=new_config)
+        else:
+            Global.open_date = True
+            new_title = str()
+            tasks_to_delete = []
+            for i in range(database_length):
+                title, current_title, check_day, check_month, check_year = await get_multipy_async(i, title)
+                if check_year == datetime.now().year:
+                    if check_month == datetime.now().month:
+                        if check_day <= datetime.now().day:
+                            title = ""
+                            cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                            del_index = cursor.fetchall()
+                            del_index = await get_clean_var(del_index, "to_string", i, True)
+                            if del_index not in tasks_to_delete:
+                                tasks_to_delete.append(del_index)
+                    if check_month < datetime.now().month:
+                        title = ""
+                        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                        del_index = cursor.fetchall()
+                        del_index = await get_clean_var(del_index, "to_string", i, True)
+                        if del_index not in tasks_to_delete:
+                            tasks_to_delete.append(del_index)
+                if check_year < datetime.now().year:
+                    title = ""
+                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                    del_index = cursor.fetchall()
+                    del_index = await get_clean_var(del_index, "to_string", i, True)
+                    if del_index not in tasks_to_delete:
+                        tasks_to_delete.append(del_index)
+                else:
+                    new_title = title
+                    Global.open_date = False
+                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
+                    media_index = cursor.fetchall()
+                    media_index = await get_clean_var(media_index, "to_string", i, True)
+                    if exists(str(MEDIA_ROOT) + "/" + media_index) and media_index not in tasks_to_delete:
+                        media_button_title = str()
+                        cursor.execute('SELECT item_name FROM SchoolTasker WHERE item_index = ?', (media_index,))
+                        media_item_name = cursor.fetchone()
+                        media_item_name = await get_clean_var(media_item_name, 'to_string', False, True)
+                        media_button_title += "🖼" + media_item_name
+                        if media_item_name == "Английский язык" or media_item_name == "Информатика":
+                            cursor.execute('SELECT group_number FROM SchoolTasker WHERE item_index = ?',
+                                           (media_index,))
+                            media_group_number = cursor.fetchone()
+                            media_group_number = await get_clean_var(media_group_number, 'to_string', False,
+                                                                     True)
+                            media_button_title += '(' + media_group_number + "ая группа)"
+                        media_button_title += ': '
+                        cursor.execute('SELECT task_description FROM SchoolTasker WHERE item_index = ?',
+                                       (media_index,))
+                        media_task_description = cursor.fetchone()
+                        media_task_description = await get_clean_var(media_task_description, 'to_string',
+                                                                     False, True)
+                        media_button_title += media_task_description
+                        new_config.keyboard.append([Button(media_button_title, self._goto_task_media,
+                                                           source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
+                                                           payload=dumps({"MEDIA_INDEX_GOTO": media_index,
+                                                                          'MEDIA_TITLE': current_title}))])
+                if not new_title:
+                    if target_screen:
+                        target_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
+                else:
+                    if target_screen:
+                        target_screen.description = new_title
+            for task_id in tasks_to_delete:
+                await logger_alert([], "delete", task_id, False)
+                cursor.execute('DELETE FROM SchoolTasker WHERE item_index = ?', (task_id,))
+                connection.commit()
+                if exists(str(MEDIA_ROOT) + '/' + task_id + '/'):
+                    rmtree(str(MEDIA_ROOT) + '/' + task_id)
+            else:
+                if target_screen:
+                    target_screen.description = new_title
+            if database_length < 1:
+                if target_screen:
+                    target_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
+            if target_screen:
+                new_config.keyboard.append([Button('⬅️ Вернуться на главный экран', MainMenu,
+                                                   source_type=SourcesTypes.GOTO_SOURCE_TYPE)])
+                return await target_screen().render(update, context, config=new_config)
+
+    @register_button_handler
+    async def _goto_task_media(self, update, context):
+        await main_get_payload(self, update, context, "task_media_index", 'MEDIA_INDEX_GOTO')
+        await main_get_payload(self, update, context, "task_media_index", 'MEDIA_TITLE')
+        try:
+            show_images = listdir('media/' + context.user_data['MEDIA_INDEX_GOTO'] + "/")
+            TaskMedia.images = []
+            for image in show_images:
+                path = context.user_data['MEDIA_INDEX_GOTO'] + '/' + image
+                item = [MEDIA_ROOT / path, context.user_data['MEDIA_TITLE']]
+                TaskMedia.images.append(item)
+            return await TaskMedia().goto(update, context)
+        except FileNotFoundError:
+            await SchoolTasks().check_tasks(update, context, SchoolTasks)
 
 
 class TaskMedia(BaseScreen, STCarouselWidget):
-    cache_covers = True
     images = [
-        [MEDIA_ROOT / "school_tasker_logo.jpg", "<strong>Hello!</strong>"]
+        [MEDIA_ROOT / "school_tasker_logo.webp", "_"]
     ]
-
-    async def add_default_keyboard(self, _update, _context):
-        return [
-            [
-                Button("⬅Назад", self.go_back,
-                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-            ]
-        ]
-
-    @register_button_handler
-    async def go_back(self, _update, _context):
-        await check_tasks(SchoolTasks)
-        return await SchoolTasks().jump(_update, _context)
+    button_target = MainMenu
+    button_source_type = SourcesTypes.GOTO_SOURCE_TYPE
+    button_title = "⬅На главный экран"
 
 
 class AlertAddingOldTask(BaseScreen):
@@ -391,6 +500,7 @@ class AlertAddingOldTask(BaseScreen):
     @register_button_handler
     async def add_old_task(self, _update, _context):
         await ManageSchoolTasksAddDetails().set_stage(_update, _context, 0)
+        _context.user_data["ADD_TASK_ITEM_INDEX"] = str(await generate_id())
         await add_task_school(_update, _context, self.task_args[0], self.task_args[1], self.task_args[2],
                               self.task_args[3], self.task_args[4], self.task_args[5])
 
@@ -691,18 +801,18 @@ class ManageSchoolTasksAddDetails(BaseScreen):
                             else:
                                 # self.task_year = datetime.now().year
                                 context.user_data["ADDING_TASK_TASK_YEAR"] = str(datetime.now().year)
-                            check = await check_task_validity(int(context.user_data["ADDING_TASK_TASK_DAY"]),
-                                                              context.user_data["ADDING_TASK_TASK_MONTH"],
-                                                              context.user_data["ADDING_TASK_TASK_YEAR"])
+                            # check = await check_task_validity(int(context.user_data["ADDING_TASK_TASK_DAY"]),
+                            #                                   context.user_data["ADDING_TASK_TASK_MONTH"],
+                            #                                   context.user_data["ADDING_TASK_TASK_YEAR"])
                             self.is_adding_task = False
-                            if check:
-                                self.description = "<strong>Введите текст задания:</strong>"
-                                await self.set_stage(update, context, 0)
-                                context.user_data["IS_IN_MEDIA_SCREEN"] = True
-                                return await CatchMedia().jump(update, context)
-                                # await add_task_school(update, context, self.task_item, self.task_description,
-                                #                       self.group_number, self.task_day, self.task_month,
-                                #                       self.task_year)
+                            # if check:
+                            self.description = "<strong>Введите текст задания:</strong>"
+                            await self.set_stage(update, context, 0)
+                            context.user_data["IS_IN_MEDIA_SCREEN"] = True
+                            return await CatchMedia().jump(update, context)
+                            # await add_task_school(update, context, self.task_item, self.task_description,
+                            #                       self.group_number, self.task_day, self.task_month,
+                            #                       self.task_year)
                             #     await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
                             #                           context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
                             #                           context.user_data["ADDING_TASK_GROUP_NUMBER"],
@@ -857,8 +967,6 @@ class CatchMedia(BaseScreen):
                     except KeyError:
                         context.user_data["MEDIA_ADD"] = []
                         context.user_data["MEDIA_ADD"].append(file)
-                    for item in context.user_data["MEDIA_ADD"]:
-                        print(item)
                     new_config = RenderConfig()
                     new_config.description = "✅<strong>Успешно получено! Что вы ещё хотите сделать?</strong>"
                     new_config.keyboard = [
@@ -903,19 +1011,19 @@ class CatchMedia(BaseScreen):
         new_config = RenderConfig()
         new_config.description = self.description
         new_config.keyboard = [
-                        [
-                            Button("Создать задание➕", self.add_school_task,
-                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-                        ],
-                        [
-                            Button("Удалить присланные фотографии🗑️", self.delete_media,
-                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-                        ],
-                        [
-                            Button("⬅Назад", self.go_to_task_screen,
-                                   source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
-                        ]
-                    ]
+            [
+                Button("Создать задание➕", self.add_school_task,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("Удалить присланные фотографии🗑️", self.delete_media,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ],
+            [
+                Button("⬅Назад", self.go_to_task_screen,
+                       source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
+            ]
+        ]
         return await CatchMedia().send(context, config=new_config, extra_data=None)
 
     @register_button_handler
@@ -940,13 +1048,8 @@ class CatchMedia(BaseScreen):
         check = await check_task_validity(int(context.user_data["ADDING_TASK_TASK_DAY"]),
                                           context.user_data["ADDING_TASK_TASK_MONTH"],
                                           context.user_data["ADDING_TASK_TASK_YEAR"])
+        context.user_data["ADD_TASK_ITEM_INDEX"] = str(await generate_id())
         if check:
-            token = str(await generate_id())
-            makedirs("media/" + token)
-            for file in context.user_data["MEDIA_ADD"]:
-                title = "media/" + token + "/FILE" + str(randint(0, 99)) + ".webp"
-                await file.download_to_drive(title)
-            del context.user_data["MEDIA_ADD"]
             await add_task_school(update, context, context.user_data["ADDING_TASK_TASK_ITEM"],
                                   context.user_data["ADDING_TASK_TASK_DESCRIPTION"],
                                   context.user_data["ADDING_TASK_GROUP_NUMBER"],
@@ -960,12 +1063,12 @@ class CatchMedia(BaseScreen):
                                context.user_data["ADDING_TASK_TASK_DAY"],
                                context.user_data["ADDING_TASK_TASK_MONTH"],
                                context.user_data["ADDING_TASK_TASK_YEAR"]],
-                              "add", context.user_data['deletion_index'], update, context)
+                              "add", context.user_data['ADD_TASK_ITEM_INDEX'], update, context)
 
     async def add_default_keyboard(self, _update, _context):
         return [
             [
-                Button("Пропустить данный шаг и добавить задание➕", self.add_school_task,
+                Button("Добавить задание➕", self.add_school_task,
                        source_type=SourcesTypes.HANDLER_SOURCE_TYPE)
             ],
             [
@@ -1024,7 +1127,7 @@ class ManageSchoolTasksRemove(BaseScreen):
         return keyboard
 
     async def get_description(self, _update, _context):
-        await check_tasks(SchoolTasks)
+        await SchoolTasks().check_tasks(_update, _context, None)
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length >= 1:
             return "<strong>Какое из этих заданий Вы хотите удалить?</strong>"
@@ -1067,6 +1170,8 @@ class ManageSchoolTasksRemoveConfirm(BaseScreen):
             await logger_alert([name, user.id], "delete", formatted_index, False)
             cursor.execute('''DELETE FROM SchoolTasker WHERE item_index = ?''', (formatted_index,))
             connection.commit()
+            if exists(str(MEDIA_ROOT) + '/' + formatted_index + '/'):
+                rmtree(str(MEDIA_ROOT) + '/' + formatted_index)
             return await TaskWasRemoved().goto(_update, _context)
 
     async def get_description(self, _update, _context):
@@ -1187,7 +1292,7 @@ class ManageSchoolTasksChangeMain(BaseScreen):
         return keyboard
 
     async def get_description(self, _update, _context):
-        await check_tasks(SchoolTasks)
+        await SchoolTasks().check_tasks(_update, _context, None)
         database_length = await get_var_from_database(None, "database_length_SchoolTasker", True)
         if database_length > 0:
             return "<strong>Какое из этих заданий Вы хотите изменить?</strong>"

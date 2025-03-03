@@ -334,59 +334,9 @@ async def get_multipy_async(index, title):
     b = task_description
     c = "</strong>\n\n"
     task_description = str(a) + str(b) + str(c)
-    title += task_time + item_name + task_description
-    return title, check_day, check_month, check_year
-
-
-async def check_tasks(school_tasks_screen):
-    global cursor
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-    database_length = Global.index_store
-    title = str()
-    if database_length < 1:
-        school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
-    else:
-        Global.open_date = True
-        new_title = str()
-        tasks_to_delete = []
-        for i in range(database_length):
-            title, check_day, check_month, check_year = await get_multipy_async(i, title)
-            if check_year == datetime.now().year:
-                if check_month == datetime.now().month:
-                    if check_day <= datetime.now().day:
-                        title = ""
-                        cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                        del_index = cursor.fetchall()
-                        del_index = await get_clean_var(del_index, "to_string", i, True)
-                        if del_index not in tasks_to_delete:
-                            tasks_to_delete.append(del_index)
-                if check_month < datetime.now().month:
-                    title = ""
-                    cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                    del_index = cursor.fetchall()
-                    del_index = await get_clean_var(del_index, "to_string", i, True)
-                    if del_index not in tasks_to_delete:
-                        tasks_to_delete.append(del_index)
-            if check_year < datetime.now().year:
-                title = ""
-                cursor.execute("SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC")
-                del_index = cursor.fetchall()
-                del_index = await get_clean_var(del_index, "to_string", i, True)
-                if del_index not in tasks_to_delete:
-                    tasks_to_delete.append(del_index)
-            else:
-                new_title = title
-                Global.open_date = False
-            if not new_title:
-                school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
-            else:
-                school_tasks_screen.description = new_title
-        for task_id in tasks_to_delete:
-            await logger_alert([], "delete", task_id, False)
-            cursor.execute('DELETE FROM SchoolTasker WHERE item_index = ?', (task_id,))
-            connection.commit()
-        if database_length < 1:
-            school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
+    current_title = task_time + item_name + task_description
+    title += current_title
+    return title, current_title, check_day, check_month, check_year
 
 
 async def get_button_title(index):
