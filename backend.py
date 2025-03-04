@@ -2,7 +2,7 @@ from calendar import monthrange
 from datetime import date
 from secrets import token_urlsafe
 from logging import getLogger
-from random import choice
+from random import choice, randint
 from hammett.core.exceptions import PayloadIsEmpty
 from sqlite3 import connect
 from time import gmtime, strftime
@@ -77,23 +77,30 @@ async def get_week_day(task_year, task_month_int: int, task_day: int):
     return str(week_day_new)
 
 
-async def get_day_time(name):
+async def get_greet(name):
+    attach = None
+    greet = "<strong>"
     if datetime.now().hour < 4:
-        greet = choice(["🌕", "🌙"])
+        greet += choice(["🌕", "🌙"])
         greet += "Доброй ночи, "
+        attach = GREET_NIGHT[randint(0, 2)]
     elif 4 <= datetime.now().hour < 12:
-        greet = choice(["🌅", "🌄"])
+        greet += choice(["🌅", "🌄"])
         greet += "Доброе утро, "
+        attach = GREET_MORNING[randint(0, 2)]
     elif 12 <= datetime.now().hour < 17:
-        greet = choice(["🌞", "☀️"])
+        greet += choice(["🌞", "☀️"])
         greet += "Добрый день, "
+        attach = GREET_DAY[randint(0, 2)]
     elif 17 <= datetime.now().hour < 23:
-        greet = choice(["🌅", "🌄"])
+        greet += choice(["🌅", "🌄"])
         greet += "Добрый вечер, "
+        attach = GREET_EVENING[randint(0, 2)]
     else:
-        greet = choice(["🌕", "🌙"])
+        greet += choice(["🌕", "🌙"])
         greet += "Доброй ночи, "
-    greet += name + "!"
+        attach = GREET_NIGHT[randint(0, 2)]
+    greet += name + "!👋" + attach + "</strong>"
     return greet
 
 

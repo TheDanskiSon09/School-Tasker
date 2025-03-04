@@ -1,7 +1,6 @@
 from json import dumps
 from os import makedirs, listdir
 from shutil import rmtree
-from random import randint
 from sqlite3 import IntegrityError
 from telegram.error import Forbidden
 from backend import *
@@ -136,10 +135,9 @@ class MainMenu(StartMixin, BaseScreen):
         except IntegrityError or AttributeError:
             cursor.execute("UPDATE Users SET user_name = ? WHERE user_id = ?", (name, user_id,))
             connection.commit()
-            if str(user_id) in ADMIN_GROUP:
-                config.description = GREET_ADMIN_LATEST[randint(0, 2)]
-            else:
-                config.description = GREET_ANONIM_LATEST[randint(0, 2)]
+            config.description = await get_greet(name)
+                # config.description = GREET_ADMIN_LATEST[randint(0, 2)]
+                # config.description = GREET_ANONIM_LATEST[randint(0, 2)]
         config.keyboard = [
             [
                 Button('Зайти в задачник📓', self.school_tasks,

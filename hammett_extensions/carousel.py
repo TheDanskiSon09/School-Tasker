@@ -14,6 +14,8 @@ _START_POSITION = 0
 
 class STCarouselWidget(CarouselWidget):
     disable_caption: str = '⛔'
+    back_caption: str = '⬅'
+    next_caption: str = '➡'
     button_target = None
     button_source_type = None
     button_title = None
