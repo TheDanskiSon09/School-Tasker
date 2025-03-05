@@ -135,8 +135,11 @@ class MainMenu(StartMixin, BaseScreen):
         except IntegrityError or AttributeError:
             cursor.execute("UPDATE Users SET user_name = ? WHERE user_id = ?", (name, user_id,))
             connection.commit()
-            config.description = await get_greet(name)
+            if str(user_id) in ADMIN_GROUP:
+                config.description = await get_greet(name)
                 # config.description = GREET_ADMIN_LATEST[randint(0, 2)]
+            else:
+                config.description = await get_greet(name)
                 # config.description = GREET_ANONIM_LATEST[randint(0, 2)]
         config.keyboard = [
             [
@@ -953,7 +956,7 @@ class CatchMedia(BaseScreen):
 
     @register_input_handler
     async def catch_media(self, update, context):
-        with suppress(KeyError):
+        try:
             if context.user_data["IS_IN_MEDIA_SCREEN"]:
                 message = update.message
                 if message.photo:
@@ -982,6 +985,9 @@ class CatchMedia(BaseScreen):
                         ]
                     ]
                     return await CatchMedia().send(context, config=new_config, extra_data=None)
+        except KeyError:
+            if update.message.text and update.message.text == '/start':
+                return await MainMenu().jump(update, context)
 
     @register_button_handler
     async def go_to_task_screen(self, update, context):
