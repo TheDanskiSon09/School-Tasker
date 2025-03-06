@@ -47,6 +47,7 @@ async def send_update_notification(update, context, status, index, is_order: boo
         ns_config = RenderConfig(
             chat_id=user_id
         )
+        NotificationScreen.images = []
         if exists("media/" + str(index) + '/'):
             add_images = listdir('media/' + str(index) + "/")
             for image in add_images:
@@ -212,9 +213,9 @@ class MainMenu(StartMixin, BaseScreen):
 
 
 class NotificationScreen(BaseScreen, STCarouselWidget):
-    button_target = MainMenu
-    button_source_type = SourcesTypes.GOTO_SOURCE_TYPE
-    button_title = "⬅На главный экран"
+    callback_button_type = "main_menu"
+    callback_button_screen = MainMenu
+    hide_keyboard = False
 
 
 class SocialMedia(BaseScreen):
@@ -438,8 +439,8 @@ class TaskMedia(BaseScreen, STCarouselWidget):
     images = [
         [MEDIA_ROOT / "school_tasker_logo.webp", "_"]
     ]
-    button_target = MainMenu
-    button_source_type = SourcesTypes.GOTO_SOURCE_TYPE
+    callback_button_type = 'school_tasks'
+    callback_button_screen = SchoolTasks
     button_title = "⬅На главный экран"
 
 
@@ -956,7 +957,9 @@ class CatchMedia(BaseScreen):
 
     @register_input_handler
     async def catch_media(self, update, context):
-        try:
+        if update.message.text and update.message.text == '/start':
+            return await MainMenu().jump(update, context)
+        with suppress(KeyError):
             if context.user_data["IS_IN_MEDIA_SCREEN"]:
                 message = update.message
                 if message.photo:
@@ -985,9 +988,6 @@ class CatchMedia(BaseScreen):
                         ]
                     ]
                     return await CatchMedia().send(context, config=new_config, extra_data=None)
-        except KeyError:
-            if update.message.text and update.message.text == '/start':
-                return await MainMenu().jump(update, context)
 
     @register_button_handler
     async def go_to_task_screen(self, update, context):
