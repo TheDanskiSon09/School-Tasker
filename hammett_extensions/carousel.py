@@ -146,5 +146,6 @@ class STCarouselWidget(CarouselWidget):
         new_config = RenderConfig()
         new_config.keyboard = []
         new_config.cover, new_config.description = self.images[_START_POSITION]
+        new_config.description = "<strong>" + "\n".join(self.description.split("\n")[1:])
         await self.render(update, context, config=new_config)
         return await self.callback_button_screen().jump(update, context)
