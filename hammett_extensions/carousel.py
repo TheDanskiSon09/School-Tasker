@@ -1,3 +1,4 @@
+from telegram.error import BadRequest
 from hammett.core.constants import RenderConfig, DEFAULT_STATE, SourcesTypes
 from hammett.core.exceptions import ImproperlyConfigured
 from hammett.core.handlers import register_button_handler
@@ -16,11 +17,12 @@ _START_POSITION = 0
 
 
 class STCarouselWidget(CarouselWidget):
-    disable_caption: str = '⛔'
+    disable_caption: str = '🚫'
     back_caption: str = '⬅'
     next_caption: str = '➡'
     callback_button_type = None
     callback_button_screen = None
+    back_description = ''
 
     def __init__(self: 'Self') -> None:
         """Initialize a carousel widget object."""
@@ -146,6 +148,62 @@ class STCarouselWidget(CarouselWidget):
         new_config = RenderConfig()
         new_config.keyboard = []
         new_config.cover, new_config.description = self.images[_START_POSITION]
-        new_config.description = "<strong>" + "\n".join(self.description.split("\n")[1:])
-        await self.render(update, context, config=new_config)
-        return await self.callback_button_screen().jump(update, context)
+        try:
+            new_config.description = "<strong>" + "\n".join(self.description.split("\n")[1:])
+            await self.render(update, context, config=new_config)
+            return await self.callback_button_screen().jump(update, context)
+        except BadRequest:
+            new_config.description = self.back_description
+            await self.render(update, context, config=new_config)
+            return await self.callback_button_screen().jump(update, context)
+
+    @register_button_handler
+    async def _next(
+            self: 'Self',
+            update: 'Update',
+            context: 'CallbackContext[BT, UD, CD, BD]',
+    ) -> None:
+        """Switch to the next image."""
+        if context.user_data:
+            current_image = (
+                    await self.get_state_value(update, context, 'position') or _START_POSITION
+            )
+        else:
+            current_image = _START_POSITION
+        save_description = self.description
+        try:
+            self.description = "<strong>" + "\n".join(self.description.split("\n")[1:])
+            self.back_description = self.description
+            return await self._switch_handle_method(
+                update,
+                context,
+                current_image,
+                current_image + 1,
+            )
+        except BadRequest:
+            self.description = save_description
+            self.back_description = self.description
+            return await self._switch_handle_method(
+                update,
+                context,
+                current_image,
+                current_image + 1,
+            )
+
+    @register_button_handler
+    async def _back(
+            self: 'Self',
+            update: 'Update',
+            context: 'CallbackContext[BT, UD, CD, BD]',
+    ) -> None:
+        """Switch to the previous image."""
+        current_image = await self.get_state_value(update, context, 'position') or _START_POSITION
+        self.cover, self.description = self.images[_START_POSITION]
+        self.description = self.back_description
+        return await self._switch_handle_method(
+            update,
+            context,
+            current_image,
+            current_image - 1,
+            )
+
