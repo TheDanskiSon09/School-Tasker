@@ -429,8 +429,15 @@ class SchoolTasks(BaseScreen):
                                 current_description = current_description + "</strong>"
                             await update.effective_chat.send_message(current_description, parse_mode="HTML")
                         except BadRequest:
+                            parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
                             current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                            for index, part in enumerate(parts):
+                                is_last_part = index == len(parts) - 1
+                                if is_last_part:
+                                    new_config.description = current_description
+                                    return await target_screen().send(context, config=new_config)
+                                else:
+                                    await update.effective_chat.send_message(current_description, parse_mode="HTML")
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
