@@ -2,7 +2,7 @@ from json import dumps
 from os import makedirs, listdir
 from shutil import rmtree
 from sqlite3 import IntegrityError
-from telegram.error import Forbidden
+from telegram.error import Forbidden, BadRequest
 from backend import *
 from os.path import exists
 from constants import *
@@ -14,7 +14,7 @@ from hammett.core.handlers import register_button_handler, register_typing_handl
 from hammett.core.hiders import ONLY_FOR_ADMIN, Hider
 from hammett.core.mixins import StartMixin
 from hammett_extensions.handlers import register_input_handler
-from settings import ADMIN_GROUP, MEDIA_ROOT
+from settings import ADMIN_GROUP, MEDIA_ROOT, MAX_CAPTION_LENGTH
 
 
 async def send_update_notification(update, context, status, index, is_order: bool):
@@ -417,7 +417,12 @@ class SchoolTasks(BaseScreen):
             if target_screen:
                 new_config.keyboard.append([Button('⬅️ Вернуться на главный экран', MainMenu,
                                                    source_type=SourcesTypes.GOTO_SOURCE_TYPE)])
-                return await target_screen().render(update, context, config=new_config)
+                try:
+                    return await target_screen().render(update, context, config=new_config)
+                except BadRequest:
+                    for i in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
+                        target_screen.description = target_screen.description[i:i + MAX_CAPTION_LENGTH]
+                        return await target_screen().send(context, config=new_config)
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
