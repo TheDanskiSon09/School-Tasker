@@ -2,8 +2,6 @@ from json import dumps
 from os import makedirs, listdir
 from shutil import rmtree
 from sqlite3 import IntegrityError
-
-import telegram.error
 from telegram.error import Forbidden
 from backend import *
 from os.path import exists
@@ -419,10 +417,7 @@ class SchoolTasks(BaseScreen):
             if target_screen:
                 new_config.keyboard.append([Button('⬅️ Вернуться на главный экран', MainMenu,
                                                    source_type=SourcesTypes.GOTO_SOURCE_TYPE)])
-                try:
-                    return await target_screen().render(update, context, config=new_config)
-                except telegram.error.BadRequest:
-                    return await target_screen().send(context, config=new_config)
+                return await target_screen().render(update, context, config=new_config)
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
