@@ -420,9 +420,17 @@ class SchoolTasks(BaseScreen):
                 try:
                     return await target_screen().render(update, context, config=new_config)
                 except BadRequest:
-                    for i in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
-                        target_screen.description = target_screen.description[i:i + MAX_CAPTION_LENGTH]
-                        return await target_screen().send(context, config=new_config)
+                    for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
+                        current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                        try:
+                            if current_description[0] != '<':
+                                current_description = '<strong>' + current_description
+                            if current_description[-1] != '>':
+                                current_description = current_description + "</strong>"
+                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                        except BadRequest:
+                            current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
