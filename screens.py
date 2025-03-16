@@ -47,20 +47,21 @@ async def send_update_notification(update, context, status, index, is_order: boo
         ns_config = RenderConfig(
             chat_id=user_id
         )
-        NotificationScreen.images = []
+        new_notification = NotificationScreen()
+        new_notification.images = []
         if exists("media/" + str(index) + '/'):
             add_images = listdir('media/' + str(index) + "/")
             for image in add_images:
                 path = str(index) + "/" + str(image)
                 item = [MEDIA_ROOT / path, ""]
-                NotificationScreen.images.append(item)
+                new_notification.images.append(item)
         else:
-            NotificationScreen.images = [
+            new_notification.images = [
                 [MEDIA_ROOT / 'school_tasker_logo.webp', ""]
             ]
-        NotificationScreen.description = notification_title
+        ns_config.description = notification_title
         with suppress(Forbidden):
-            await NotificationScreen().send(context, config=ns_config, extra_data=None)
+            await new_notification.send(context, config=ns_config, extra_data=None)
 
 
 async def add_task_school(_update, _context, task_item, task_description, group_number, task_day, task_month,
@@ -421,23 +422,41 @@ class SchoolTasks(BaseScreen):
                     return await target_screen().render(update, context, config=new_config)
                 except BadRequest:
                     for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
-                        current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                        try:
+                        for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
+                            current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
                             if current_description[0] != '<':
                                 current_description = '<strong>' + current_description
                             if current_description[-1] != '>':
                                 current_description = current_description + "</strong>"
-                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
-                        except BadRequest:
-                            parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
-                            current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                            for index, part in enumerate(parts):
-                                is_last_part = index == len(parts) - 1
-                                if is_last_part:
-                                    new_config.description = current_description
-                                    return await target_screen().send(context, config=new_config)
-                                else:
-                                    await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                            try:
+                                await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                            except BadRequest:
+                                parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
+                                current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                                for index, part in enumerate(parts):
+                                    is_last_part = index == len(parts) - 1
+                                    if is_last_part:
+                                        new_config.description = current_description
+                                        return await target_screen().send(context, config=new_config)
+                                    else:
+                                        await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                        # current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                        # try:
+                        #     if current_description[0] != '<':
+                        #         current_description = '<strong>' + current_description
+                        #     if current_description[-1] != '>':
+                        #         current_description = current_description + "</strong>"
+                        #     await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                        # except BadRequest:
+                        #     parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
+                        #     current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                        #     for index, part in enumerate(parts):
+                        #         is_last_part = index == len(parts) - 1
+                        #         if is_last_part:
+                        #             new_config.description = current_description
+                        #             return await target_screen().send(context, config=new_config)
+                        #         else:
+                        #             await update.effective_chat.send_message(current_description, parse_mode="HTML")
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
