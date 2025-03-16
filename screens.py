@@ -430,7 +430,7 @@ class SchoolTasks(BaseScreen):
                                 current_description = current_description + "</strong>"
                             await update.effective_chat.send_message(current_description, parse_mode="HTML")
                         except BadRequest:
-                            print(current_description + "\nITS FIRST")
+                            print("ITS FIRST")
                             try:
                                 parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
                                 current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
@@ -442,7 +442,7 @@ class SchoolTasks(BaseScreen):
                                     else:
                                         await update.effective_chat.send_message(current_description, parse_mode="HTML")
                             except BadRequest:
-                                print(current_description + "\nITS LAST")
+                                print("\nITS NOT FIRST")
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
