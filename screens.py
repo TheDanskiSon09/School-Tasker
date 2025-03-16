@@ -422,15 +422,16 @@ class SchoolTasks(BaseScreen):
                     return await target_screen().render(update, context, config=new_config)
                 except BadRequest:
                     for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
-                        for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
-                            current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                        current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
+                        try:
                             if current_description[0] != '<':
                                 current_description = '<strong>' + current_description
                             if current_description[-1] != '>':
                                 current_description = current_description + "</strong>"
+                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                        except BadRequest:
+                            print(current_description + "\nITS FIRST")
                             try:
-                                await update.effective_chat.send_message(current_description, parse_mode="HTML")
-                            except BadRequest:
                                 parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
                                 current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
                                 for index, part in enumerate(parts):
@@ -440,23 +441,8 @@ class SchoolTasks(BaseScreen):
                                         return await target_screen().send(context, config=new_config)
                                     else:
                                         await update.effective_chat.send_message(current_description, parse_mode="HTML")
-                        # current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                        # try:
-                        #     if current_description[0] != '<':
-                        #         current_description = '<strong>' + current_description
-                        #     if current_description[-1] != '>':
-                        #         current_description = current_description + "</strong>"
-                        #     await update.effective_chat.send_message(current_description, parse_mode="HTML")
-                        # except BadRequest:
-                        #     parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
-                        #     current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                        #     for index, part in enumerate(parts):
-                        #         is_last_part = index == len(parts) - 1
-                        #         if is_last_part:
-                        #             new_config.description = current_description
-                        #             return await target_screen().send(context, config=new_config)
-                        #         else:
-                        #             await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                            except BadRequest:
+                                print(current_description + "\nITS LAST")
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
