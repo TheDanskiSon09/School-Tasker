@@ -4,6 +4,7 @@ from shutil import rmtree
 from sqlite3 import IntegrityError
 from telegram.error import Forbidden, BadRequest
 from backend import *
+from bs4 import BeautifulSoup
 from os.path import exists
 from constants import *
 from contextlib import suppress
@@ -326,6 +327,14 @@ class Options(BaseScreen):
 
 class SchoolTasks(BaseScreen):
 
+    async def _save_html_markers(self, caption):
+        save_markers = caption.replace("\n", "<!-- NEWLINE -->")
+        return save_markers
+
+    async def _load_html_markers(self, caption):
+        new_caption = caption.replace("<!-- NEWLINE -->", "\n")
+        return new_caption
+
     async def check_tasks(self, update, context, target_screen):
         new_config = RenderConfig()
         new_config.keyboard = []
@@ -423,22 +432,17 @@ class SchoolTasks(BaseScreen):
                 except BadRequest:
                     for x in range(0, len(target_screen.description), MAX_CAPTION_LENGTH):
                         current_description = target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                        try:
-                            if current_description[0] != '<':
-                                current_description = '<strong>' + current_description
-                            if current_description[-1] != '>':
-                                current_description = current_description + "</strong>"
-                            await update.effective_chat.send_message(current_description, parse_mode="HTML")
-                        except BadRequest:
-                            parts = [target_screen.description[x:x + MAX_CAPTION_LENGTH]]
-                            current_description = '<strong>' + target_screen.description[x:x + MAX_CAPTION_LENGTH]
-                            for index, part in enumerate(parts):
-                                is_last_part = index == len(parts) - 1
-                                if is_last_part:
-                                    new_config.description = current_description
-                                    return await target_screen().send(context, config=new_config)
-                                else:
-                                    await update.effective_chat.send_message(current_description, parse_mode="HTML")
+                        save_markers = await self._save_html_markers(current_description)
+                        soup = BeautifulSoup(save_markers, "html.parser")
+                        soup.prettify()
+                        current_description = str(soup)
+                        current_description = await self._load_html_markers(current_description)
+                        current_description = "<strong>" + current_description + '</strong>'
+                        if x + MAX_CAPTION_LENGTH >= len(target_screen.description):
+                            new_config.description = current_description
+                            return await target_screen().send(context, config=new_config)
+                        else:
+                            await update.effective_chat.send_message(current_description, parse_mode='HTML')
 
     @register_button_handler
     async def _goto_task_media(self, update, context):
