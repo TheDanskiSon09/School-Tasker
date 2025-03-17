@@ -59,7 +59,7 @@ async def send_update_notification(update, context, status, index, is_order: boo
             new_notification.images = [
                 [MEDIA_ROOT / 'school_tasker_logo.webp', ""]
             ]
-        ns_config.description = notification_title
+        new_notification.description = notification_title
         with suppress(Forbidden):
             await new_notification.send(context, config=ns_config, extra_data=None)
 
