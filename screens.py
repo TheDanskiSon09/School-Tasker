@@ -400,7 +400,7 @@ class SchoolTasks(BaseScreen):
                                        (media_index,))
                         media_task_description = cursor.fetchone()
                         media_task_description = await get_clean_var(media_task_description, 'to_string',
-                                                                     False, True)
+                                                                     False, False)
                         media_button_title += media_task_description
                         new_config.keyboard.append([Button(media_button_title, self._goto_task_media,
                                                            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
