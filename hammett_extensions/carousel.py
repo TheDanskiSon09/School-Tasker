@@ -1,6 +1,6 @@
 from telegram.error import BadRequest
+from constants import BUTTON_BACK, BUTTON_BACK_TO_MENU
 from hammett.core.constants import RenderConfig, DEFAULT_STATE, SourcesTypes
-from hammett.core.exceptions import ImproperlyConfigured
 from hammett.core.handlers import register_button_handler
 from hammett.widgets import CarouselWidget
 from typing import TYPE_CHECKING
@@ -27,49 +27,18 @@ class STCarouselWidget(CarouselWidget):
     def __init__(self: 'Self') -> None:
         """Initialize a carousel widget object."""
         super().__init__()
-
-        if not isinstance(self.images, list):
-            msg = f'The images attribute of {self.__class__.__name__} must be a list of lists'
-            raise ImproperlyConfigured(msg)
-
-        if not (self.back_caption and self.next_caption and self.disable_caption):
-            msg = (
-                f'{self.__class__.__name__} must specify both back_caption, next_caption '
-                f'and disable_caption'
-            )
-            raise ImproperlyConfigured(msg)
-
-        self._back_button = Button(
-            self.back_caption,
-            self._back,
-            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-        )
-        self._next_button = Button(
-            self.next_caption,
-            self._next,
-            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-        )
-        self._disabled_button = Button(
-            self.disable_caption,
-            self._do_nothing,
-            source_type=SourcesTypes.HANDLER_SOURCE_TYPE,
-        )
         if self.callback_button_type == 'main_menu':
             self._callback_button = Button(
-                '⬅На главный экран',
+                BUTTON_BACK_TO_MENU,
                 self._go_to_main_menu,
                 source_type=SourcesTypes.HANDLER_SOURCE_TYPE
             )
         elif self.callback_button_type == 'school_tasks':
             self._callback_button = Button(
-                '⬅Назад',
+                BUTTON_BACK,
                 self._go_to_school_tasks,
                 source_type=SourcesTypes.HANDLER_SOURCE_TYPE
             )
-        if len(self.images) > 1:
-            self._infinity_keyboard = [[self._back_button, self._next_button, self._callback_button]]
-        else:
-            self._infinity_keyboard = [[self._callback_button]]
 
     async def _init(
             self: 'Self',
@@ -86,25 +55,21 @@ class STCarouselWidget(CarouselWidget):
         config.cover = cover
         if not config.description:
             config.description = description or self.description
-        if self.infinity:
-            config.keyboard = (self._infinity_keyboard +
-                               await self.add_extra_keyboard(update, context))
-        else:
-            config.keyboard = await self._build_keyboard(
-                update,
-                context,
-                current_images,
-                _START_POSITION,
-            )
+        config.keyboard = await self._build_keyboard(
+            update,
+            context,
+            current_images,
+            _START_POSITION,
+        )
         await self.render(update, context, config=config, extra_data={'images': current_images})
         return DEFAULT_STATE
 
     async def _build_keyboard(
-        self: 'Self',
-        update: 'Update | None',
-        context: 'CallbackContext[BT, UD, CD, BD]',
-        images: list[list[str]],
-        current_image: int,
+            self: 'Self',
+            update: 'Update | None',
+            context: 'CallbackContext[BT, UD, CD, BD]',
+            images: list[list[str]],
+            current_image: int,
     ) -> 'Keyboard':
         """Determine which button to disable and return the updated keyboard."""
         try:
@@ -123,13 +88,15 @@ class STCarouselWidget(CarouselWidget):
                 back_button = self._disabled_button
             else:
                 back_button = self._back_button
-        callback_button = self._callback_button
+        keyboard = []
         if len(self.images) > 1:
-            return [
-                [back_button, next_button], [callback_button]
-            ]
-        else:
-            return [[callback_button]]
+            keyboard.append(
+                [back_button, next_button])
+        keyboard.append([*await self.add_extra_keyboard(update, context)])
+        return keyboard
+
+    async def add_extra_keyboard(self, _update, _context):
+        return [self._callback_button]
 
     @register_button_handler
     async def _go_to_school_tasks(
@@ -205,5 +172,4 @@ class STCarouselWidget(CarouselWidget):
             context,
             current_image,
             current_image - 1,
-            )
-
+        )
