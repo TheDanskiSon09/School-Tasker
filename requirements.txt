@@ -1,4 +1,3 @@
-#git+https://github.com/cusdeb-com/hammett.git@main#egg=hammett
 git+https://github.com/cusdeb-com/hammett.git@release1#egg=hammett
 aiofiles==23.1.0
 anyio==4.4.0
