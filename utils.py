@@ -149,14 +149,14 @@ def get_hypertime(month: int, day: int, year: int):
     return str(hypertime)
 
 
-async def get_payload_safe(self, update, _context, key_id: str, value: str):
+async def get_payload_safe(self, update, context, key_id: str, value: str):
     try:
-        payload = loads(await self.get_payload(update, _context))
+        payload = loads(await self.get_payload(update, context))
     except PayloadIsEmpty:
-        payload = _context.user_data.get(key_id)
+        payload = context.user_data.get(key_id)
     else:
-        _context.user_data[key_id] = payload
-    _context.user_data[value] = payload[value]
+        context.user_data[key_id] = payload
+    context.user_data[value] = payload[value]
 
 
 def find_informative_username(username):

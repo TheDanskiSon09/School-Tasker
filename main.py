@@ -1,9 +1,11 @@
 from hammett.core import Bot
 from hammett.core.constants import DEFAULT_STATE
+from hammett.core.mixins import StartMixin
 from hammett.utils.autodiscovery import autodiscover_screens
-# from school_tasker.screens.screens import MainMenu, BaseScreen, StartMixin
-# from hammett_extensions.carousel import BaseCarouselWidget
-from screens import *
+
+from school_tasker.screens.base.base_carousel import BaseCarouselWidget
+from school_tasker.screens.base.base_screen import BaseScreen
+from school_tasker.screens import main_menu
 
 
 def main():
@@ -12,20 +14,8 @@ def main():
     name = 'School Tasker'
     app = Bot(
         name,
-        entry_point=MainMenu,
-        states={
-            DEFAULT_STATE: [MainMenu, SchoolTasks, SocialMedia, Options, SchoolTaskManagementMain,
-                            SchoolTaskAddition, SchoolTaskAdditionDetails, SchoolTaskRemoval,
-                            SchoolTaskRemovalConfirmation, StaticNotificationScreen, CarouselNotificationScreen,
-                            WhatsNew, SchoolTaskChangeMain, SchoolTaskChangeBase,
-                            SchoolTaskChangeItem,
-                            SchoolTaskChangeTask, SchoolTaskChangeDay, SchoolTaskMonthChange,
-                            SchoolTaskChangeGroupNumber, SchoolTaskAdditionGroupNumber,
-                            OldTaskAdditionAlert, StaticTaskMedia, CarouselTaskMedia ,MediaCapture, SchoolItemManagement,
-                            SchoolItemGroupsChange, SchoolItemNameChange, SchoolItemEmojiChange, SchoolItemRodNameChange,
-                            SchoolItemDeletionConfirmation, CommunityItemManagement, CommunityItemNameAddition, SchoolTaskAdditionDetailsDay,
-                            SchoolTaskAdditionDetailsMonth]
-        }
+        entry_point=main_menu.MainMenu,
+        states={DEFAULT_STATE: autodiscover_screens('school_tasker.screens', [BaseScreen, StartMixin, BaseCarouselWidget])}
     )
     app.run()
 
