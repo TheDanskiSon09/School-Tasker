@@ -33,7 +33,6 @@ class MainMenu(StartMixin, base_screen.BaseScreen):
             connection.commit()
             config.description = FIRST_GREET[randint(0, 2)]
         except IntegrityError or AttributeError:
-            connection.rollback()
             cursor.execute("UPDATE Users SET name = %s WHERE id = %s", (user_name, user_id,))
             connection.commit()
             config.description = get_greet(user_name)
