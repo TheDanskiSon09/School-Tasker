@@ -9,7 +9,6 @@ from school_tasker.screens.base import base_screen
 
 
 class WhatsNew(base_screen.BaseScreen):
-    description = "_"
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import main_menu

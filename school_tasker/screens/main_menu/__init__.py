@@ -1,7 +1,3 @@
-from random import randint
-from logging import getLogger
-from hammett.core import Button
-from hammett.core.constants import RenderConfig, SourceTypes
 from hammett.core.handlers import register_button_handler
 from hammett.core.mixins import StartMixin
 from mysql.connector import IntegrityError
