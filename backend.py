@@ -309,7 +309,6 @@ async def once_delete_task(school_tasks_screen, context):
     await logger_alert([], "delete", 0, False, context)
     cursor.execute("DELETE FROM SchoolTasker WHERE item_index = %s", (0,))
     connection.commit()
-    connection.rollback()
     school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
