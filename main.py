@@ -1,31 +1,21 @@
-from hammett.core import Application
+from hammett.core import Bot
 from hammett.core.constants import DEFAULT_STATE
-# from hammett.utils.autodiscovery import autodiscover_screens
-# from screens import MainMenu
-from screens import *
+from hammett.core.mixins import StartMixin
+from hammett.utils.autodiscovery import autodiscover_screens
+
+from school_tasker.screens.base.base_carousel import BaseCarouselWidget
+from school_tasker.screens.base.base_screen import BaseScreen
+from school_tasker.screens import main_menu
 
 
 def main():
     """Runs the bot. """
 
     name = 'School Tasker'
-    app = Application(
+    app = Bot(
         name,
-        entry_point=MainMenu,
-        states={
-            DEFAULT_STATE: [MainMenu, SchoolTasks, SocialMedia, Options, ManageSchoolTasksMain,
-                            ManageSchoolTasksAdd, ManageSchoolTasksAddDetails,
-                            TaskWasAdded, ManageSchoolTasksRemove,
-                            ManageSchoolTasksRemoveConfirm, TaskWasChanged, NotificationScreen,
-                            WhatsNew, ManageSchoolTasksChangeMain, ManageSchoolTasksChangeBase,
-                            ManageSchoolTasksChangeItem,
-                            ManageSchoolTasksChangeTask, ManageSchoolTasksChangeDay, ManageSchoolTasksChangeMonth,
-                            ManageSchoolTasksChangeGroupNumber, ManageSchoolTasksAddGroupNumber, TaskCantBeChanged,
-                            AlertAddingOldTask, TaskMedia, CatchMedia]
-        },
-        # states={
-        #     DEFAULT_STATE: autodiscover_screens('screens'),
-        # }
+        entry_point=main_menu.MainMenu,
+        states={DEFAULT_STATE: autodiscover_screens('school_tasker.screens', [BaseScreen, StartMixin, BaseCarouselWidget])}
     )
     app.run()
 
