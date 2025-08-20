@@ -24,6 +24,7 @@ class BaseCarouselWidget(CarouselWidget):
     def __init__(self: 'Self') -> None:
         """Initialize a carousel widget object."""
         super().__init__()
+        self._callback_button = None
         if self.callback_button_type == 'main_menu':
             self._callback_button = Button(
                 BUTTON_BACK_TO_MENU,
