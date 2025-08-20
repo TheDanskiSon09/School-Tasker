@@ -19,9 +19,7 @@ connection = connect(
     user=str(settings.DATABASE_USER),
     password=str(settings.DATABASE_PASSWORD),
     database=str(settings.DATABASE_NAME),
-    port=str(settings.DATABASE_PORT),
-    connection_timeout=10,
-    autocommit=True
+    port=str(settings.DATABASE_PORT)
 )
 
 cursor = connection.cursor()
@@ -51,6 +49,21 @@ user_role_in_class TEXT
 LOGGER = getLogger('hammett')
 
 
+# создать модуль например db_api.py и в нем создать функции-ручки (публичный интерфейс) (например, def create_user)
+# для разделения абстракции обращения к базе данных и логики отображения компонентов экрана
+
+async def execute_query(query, params=None):
+    if params is None:
+        params = ()
+    cursor.execute(query, params)
+    operation = query.strip().split()[0].upper()
+    if operation == "SELECT":
+        return cursor.fetchall()
+    else:
+        connection.commit()
+        return None
+
+
 async def show_notification_screen(update, context, translation_type: str, description, keyboard):
     from school_tasker.screens.screen_notification import ScreenNotification
     new_config = RenderConfig()
@@ -78,17 +91,21 @@ async def send_update_notification(update, context, status, index, is_order: boo
     task_month = recognise_month(task_month)
     task_year = await get_var_from_database(index, "task_year", is_order, context)
     user_id_list = []
-    cursor.execute(
+    extracted_id = await execute_query(
         'SELECT id FROM Users WHERE send_notification = 1 AND id IN (SELECT user_id FROM UserCommunities WHERE class_name = %s)',
         (context.user_data['CURRENT_CLASS_NAME'],))
-    extracted_id = cursor.fetchall()
+    # cursor.execute(
+    #     'SELECT id FROM Users WHERE send_notification = 1 AND id IN (SELECT user_id FROM UserCommunities WHERE class_name = %s)',
+    #     (context.user_data['CURRENT_CLASS_NAME'],))
+    # extracted_id = cursor.fetchall()
     for id_row in extracted_id:
         id_row = list(id_row)
         id_row = int(id_row[0])
         user_id_list.append(id_row)
     for user_id in user_id_list:
-        cursor.execute("SELECT name FROM Users WHERE id = %s", (user_id,))
-        user_name = cursor.fetchall()
+        user_name = await execute_query("SELECT name FROM Users WHERE id = %s", (user_id,))
+        # cursor.execute("SELECT name FROM Users WHERE id = %s", (user_id,))
+        # user_name = cursor.fetchall()
         user_name = get_clean_var(user_name, "to_string", 0, True)
         notification_title = "<strong>Здравствуйте, " + str(user_name) + "!" + "\n"
         notification_title += await get_notification_title(context, task_description, task_day, task_month_int,
@@ -117,11 +134,12 @@ async def send_update_notification(update, context, status, index, is_order: boo
                 new_notification.images = [
                     [settings.MEDIA_ROOT / 'logo.webp', notification_title]
                 ]
+                new_notification.description = notification_title
         except KeyError:
             new_notification = StaticNotificationScreen()
             new_notification.description = notification_title
             new_notification.images = [
-                [settings.MEDIA_ROOT / 'logo.webp', ""]
+                [settings.MEDIA_ROOT / 'logo.webp', notification_title]
             ]
         new_config.keyboard = [
             [
@@ -165,21 +183,32 @@ async def add_task_school(update, context, task_item, task_description, group_nu
     from school_tasker.screens import main_menu
     from school_tasker.screens.school_task_addition import SchoolTaskAddition
     from school_tasker.screens.school_task_management_main import SchoolTaskManagementMain
-    cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
-                   (context.user_data['ADDING_TASK_INDEX'],))
-    db_length = cursor.fetchall()
+    db_length = await execute_query(
+        'SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
     db_length = get_clean_var(db_length, 'to_int', 0, True)
+    # cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+    #                (context.user_data['ADDING_TASK_INDEX'],))
+    # db_length = cursor.fetchall()
     if db_length > 0:
         hypertime = get_hypertime(int(task_month), int(task_day), int(task_year))
-        cursor.execute(
+        await execute_query(
             'INSERT INTO ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks (item_name, item_index, group_number, '
                                                                        'task_description, task_day, task_month,'
                                                                        'task_year, hypertime)'
                                                                        'VALUES'
                                                                        '(%s,%s,%s,%s,%s,%s,%s,%s)',
-            (task_item, context.user_data["ADD_TASK_ITEM_INDEX"], group_number, task_description, task_day,
-             task_month, task_year, hypertime,))
-        connection.commit()
+            (task_item, context.user_data["ADD_TASK_ITEM_INDEX"], group_number, task_description,
+             task_day, task_month, task_year, hypertime,))
+        # cursor.execute(
+        #     'INSERT INTO ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks (item_name, item_index, group_number, '
+        #                                                                'task_description, task_day, task_month,'
+        #                                                                'task_year, hypertime)'
+        #                                                                'VALUES'
+        #                                                                '(%s,%s,%s,%s,%s,%s,%s,%s)',
+        #     (task_item, context.user_data["ADD_TASK_ITEM_INDEX"], group_number, task_description, task_day,
+        #      task_month, task_year, hypertime,))
+        # connection.commit()
         with suppress(KeyError):
             if context.user_data["MEDIA_ADD"]:
                 makedirs("media/" + context.user_data["ADD_TASK_ITEM_INDEX"])
@@ -294,11 +323,15 @@ async def logger_alert(user: list, status: str, formattered_index, is_order: boo
     status += " task"
     title += status
     title += ": На " + str(task_day) + "." + str(task_month) + " по " + str(item_name)
-    cursor.execute(
+    check_groups = await execute_query(
         'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
         (item_name,))
-    check_groups = cursor.fetchall()
     check_groups = get_clean_var(check_groups, 'to_string', 0, True)
+    # cursor.execute(
+    #     'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #     (item_name,))
+    # check_groups = cursor.fetchall()
+    # check_groups = get_clean_var(check_groups, 'to_string', 0, True)
     if int(check_groups) > 1:
         title += "(" + str(group_number) + "ая группа)"
     title += ": " + str(task_description)
@@ -307,8 +340,9 @@ async def logger_alert(user: list, status: str, formattered_index, is_order: boo
 
 async def once_delete_task(school_tasks_screen, context):
     await logger_alert([], "delete", 0, False, context)
-    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = %s", (0,))
-    connection.commit()
+    await execute_query("DELETE FROM SchoolTasker WHERE item_index = %s", (0,))
+    # cursor.execute("DELETE FROM SchoolTasker WHERE item_index = %s", (0,))
+    # connection.commit()
     school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
 
 
@@ -354,17 +388,23 @@ async def get_multipy_async(index, title, context):
     context.user_data['RENDER_LAST_YEAR'] = task_year
     item_name = await get_var_from_database(index, "item_name", True, context)
     html_start = "<strong>"
-    cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-                   (item_name,))
-    emoji = cursor.fetchall()
+    emoji = await execute_query(
+        'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+    # cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #                (item_name,))
+    # emoji = cursor.fetchall()
     emoji = get_clean_var(emoji, 'to_string', 0, True)
-    cursor.execute(
+    groups_check = await execute_query(
         'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
         (item_name,))
-    groups_check = cursor.fetchone()
-    groups_check = get_clean_var(groups_check, 'to_int', 0, True)
+    # cursor.execute(
+    #     'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #     (item_name,))
+    # groups_check = cursor.fetchone()
+    groups_check = get_clean_var(groups_check, 'to_string', 0, True)
     item_name = html_start + str(emoji) + item_name
-    if groups_check > 1:
+    if int(groups_check) > 1:
         item_name += " ("
         group_number = await get_var_from_database(index, "group_number", True, context)
         item_name += 'Группа ' + str(group_number) + ')'
@@ -378,22 +418,29 @@ async def get_multipy_async(index, title, context):
 
 
 async def get_button_title(index, context):
-    cursor.execute('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-    item_name = cursor.fetchall()
+    item_name = await execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    # cursor.execute('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    # item_name = cursor.fetchall()
     item_name = get_clean_var(item_name, 'to_string', index, True)
-    cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-                   (item_name,))
-    emoji = cursor.fetchall()
+    emoji = await execute_query(
+        'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+    # cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #                (item_name,))
+    # emoji = cursor.fetchall()
     emoji = get_clean_var(emoji, 'to_string', 0, True)
-    cursor.execute(
+    check = await execute_query(
         'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
         (item_name,))
-    check = cursor.fetchall()
+    # cursor.execute(
+    #     'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #     (item_name,))
+    # check = cursor.fetchall()
     check = get_clean_var(check, 'to_string', False, True)
     item_name = str(emoji) + str(item_name)
     if int(check) > 1:
         group_number = await get_var_from_database(index, "group_number", True, context)
-        item_name += " (" + str(group_number) + "ая группа) "
+        item_name += " (Группа " + str(group_number) + ") "
     task_description = await get_var_from_database(index, "task_description", True, context)
     task_description = recognise_n_tag(task_description)
     title = item_name
@@ -416,21 +463,28 @@ async def get_notification_title(context, task_description, task_day, task_month
     title += str(add_month_txt)
     status = status_dict[stat]
     title += " было " + status + " задание по "
-    cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
-                   (context.user_data['ADDING_TASK_INDEX'],))
-    emoji = cursor.fetchall()
-    emoji = get_clean_var(emoji, 'to_string', 0, True)
-    cursor.execute(
-        'SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+    emoji = await execute_query(
+        'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
         (context.user_data['ADDING_TASK_INDEX'],))
-    rod_name = cursor.fetchall()
+    # cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+    #                (context.user_data['ADDING_TASK_INDEX'],))
+    # emoji = cursor.fetchall()
+    emoji = get_clean_var(emoji, 'to_string', 0, True)
+    rod_name = await execute_query('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    # cursor.execute(
+    #     'SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+    #     (context.user_data['ADDING_TASK_INDEX'],))
+    # rod_name = cursor.fetchall()
     rod_name = get_clean_var(rod_name, 'to_string', 0, True)
     add_task_txt = emoji + rod_name
     title += add_task_txt
-    cursor.execute(
-        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    check_group = await execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
         (context.user_data['ADDING_TASK_NAME'],))
-    check_group = cursor.fetchall()
+    # cursor.execute(
+    #     'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+    #     (context.user_data['ADDING_TASK_NAME'],))
+    # check_group = cursor.fetchall()
     check_group = get_clean_var(check_group, 'to_string', 0, True)
     if int(check_group) > 1:
         group_txt = " (Группа " + context.user_data['ADDING_TASK_GROUP_NUMBER'] + ")"
@@ -441,10 +495,10 @@ async def get_notification_title(context, task_description, task_day, task_month
 
 async def check_task_status(context):
     check_db = str(context.user_data['db_check'])
-    cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-    real_db = cursor.fetchall()
+    real_db = await execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    # cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    # real_db = cursor.fetchall()
     real_db = get_clean_var(real_db, "to_string", 0, True)
     if check_db != real_db:
         return False
-    else:
-        return True
+    return True

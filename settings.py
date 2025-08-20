@@ -14,3 +14,14 @@ DATABASE_HOST = getenv('DATABASE_HOST', '')
 SAVE_LATEST_MESSAGE = True
 MAX_CAPTION_LENGTH = 1024
 MEDIA_ROOT = Path(__file__).resolve().parent / 'media'
+ERROR_HANDLER_CONF = {
+    'IGNORE_QUERY_IS_TOO_OLD': True,
+    'IGNORE_TIMED_OUT': True,
+    'IGNORE_UPDATE_MASSAGE_FAIL': True,
+}
+# REDIS_PERSISTENCE = {
+#     'HOST': str(DATABASE_HOST),
+#     'PORT': str(DATABASE_PORT),
+#     'DB': 0,
+#     'PASSWORD': str(DATABASE_PASSWORD),
+# }
