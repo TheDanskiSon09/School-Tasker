@@ -15,20 +15,23 @@ class SchoolTaskChangeMain(base_screen.BaseScreen):
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import school_task_management_main
-        backend.cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-        db_check = backend.cursor.fetchall()
+        # backend.cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # db_check = backend.cursor.fetchall()
+        db_check = await backend.execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
         try:
             db_check = get_clean_var(db_check, "to_string", False, True)
         except IndexError:
             db_check = ""
-        backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-        db_length = backend.cursor.fetchall()
+        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # db_length = backend.cursor.fetchall()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         keyboard = []
         for task_index in range(db_length):
             with suppress(KeyError):
-                backend.cursor.execute('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-                item_index = backend.cursor.fetchall()
+                item_index = await backend.execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+                # backend.cursor.execute('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+                # item_index = backend.cursor.fetchall()
                 item_index = get_clean_var(item_index, 'to_string', task_index, True)
                 button_name = await backend.get_button_title(task_index, context)
                 button_list = [

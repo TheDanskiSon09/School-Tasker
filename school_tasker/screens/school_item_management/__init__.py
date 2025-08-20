@@ -2,12 +2,12 @@ from hammett.core import Button
 from hammett.core.constants import SourceTypes
 from hammett.core.handlers import register_button_handler
 
-from constants import BUTTON_BACK
+from constants import BUTTON_BACK, WHAT_DO_YOU_WANT_TO_DO_WITH_THIS_ITEM
 from school_tasker.screens.base import base_screen
 
 
 class SchoolItemManagement(base_screen.BaseScreen):
-    description = '<strong>Что Вы хотите сделать с данным предметом?</strong>'
+    description = WHAT_DO_YOU_WANT_TO_DO_WITH_THIS_ITEM
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import community_item_management, school_item_deletion_confirmation

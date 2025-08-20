@@ -13,8 +13,9 @@ from utils import get_clean_var, get_payload_safe
 class CommunityItemManagement(base_screen.BaseScreen):
 
     async def get_description(self, update, context):
-        backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
-        db_length = backend.cursor.fetchall()
+        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
+        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
+        # db_length = backend.cursor.fetchall()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             return SELECT_ACTION
@@ -24,20 +25,26 @@ class CommunityItemManagement(base_screen.BaseScreen):
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import community_management_main
         keyboard = []
-        backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
-        db_length = backend.cursor.fetchall()
+        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
+        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + "_Items")
+        # db_length = backend.cursor.fetchall()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
-            backend.cursor.execute('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            main_name_list = backend.cursor.fetchall()
-            backend.cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            emoji_list = backend.cursor.fetchall()
-            backend.cursor.execute('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            rod_name_list = backend.cursor.fetchall()
-            backend.cursor.execute('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            groups_list = backend.cursor.fetchall()
-            backend.cursor.execute('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            index_list = backend.cursor.fetchall()
+            main_name_list = await backend.execute_query('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            emoji_list = await backend.execute_query('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # backend.cursor.execute('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            rod_name_list = await backend.execute_query('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            groups_list = await backend.execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            index_list = await backend.execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # main_name_list = backend.cursor.fetchall()
+            # backend.cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # emoji_list = backend.cursor.fetchall()
+            # backend.cursor.execute('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # rod_name_list = backend.cursor.fetchall()
+            # backend.cursor.execute('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # groups_list = backend.cursor.fetchall()
+            # backend.cursor.execute('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+            # index_list = backend.cursor.fetchall()
             for i in range(db_length):
                 main_name = get_clean_var(main_name_list, 'to_string', i - 1, True)
                 emoji = get_clean_var(emoji_list, 'to_string', i - 1, True)

@@ -12,10 +12,13 @@ from utils import get_clean_var, get_payload_safe
 
 class CommunitySelectionToManage(base_screen.BaseScreen):
     async def get_description(self, update, context):
-        backend.cursor.execute(
+        db_length = await backend.execute_query(
             "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
             (update.effective_user.id,))
-        db_length = backend.cursor.fetchone()
+        # backend.cursor.execute(
+        #     "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
+        #     (update.effective_user.id,))
+        # db_length = backend.cursor.fetchone()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             return SELECT_ONE_OF_COMMUNITIES
@@ -25,14 +28,20 @@ class CommunitySelectionToManage(base_screen.BaseScreen):
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import main_menu
         keyboard = []
-        backend.cursor.execute(
+        db_length = await backend.execute_query(
             "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
             (update.effective_user.id,))
-        db_length = backend.cursor.fetchall()
-        backend.cursor.execute(
+        name_list = await backend.execute_query(
             "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
             (update.effective_user.id,))
-        name_list = backend.cursor.fetchall()
+        # backend.cursor.execute(
+        #     "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
+        #     (update.effective_user.id,))
+        # db_length = backend.cursor.fetchall()
+        # backend.cursor.execute(
+        #     "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
+        #     (update.effective_user.id,))
+        # name_list = backend.cursor.fetchall()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             for i in range(db_length):

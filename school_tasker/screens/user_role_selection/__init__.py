@@ -14,8 +14,9 @@ from utils import get_clean_var, get_payload_safe
 class UserRoleSelection(base_screen.BaseScreen):
 
     async def get_description(self, update, context):
-        backend.cursor.execute('SELECT name FROM Users WHERE id = %s', (context.user_data['CHANGE_USER_ROLE_ID'],))
-        name = backend.cursor.fetchall()
+        name = await backend.execute_query('SELECT name FROM Users WHERE id = %s', (context.user_data['CHANGE_USER_ROLE_ID'],))
+        # backend.cursor.execute('SELECT name FROM Users WHERE id = %s', (context.user_data['CHANGE_USER_ROLE_ID'],))
+        # name = backend.cursor.fetchall()
         name = get_clean_var(name, 'to_string', 0, True)
         return '<strong>Выберите новую роль для ' + name + ':</strong>'
 
@@ -43,10 +44,12 @@ class UserRoleSelection(base_screen.BaseScreen):
             new_role = 'ADMIN'
         else:
             new_role = 'ANONIM'
-        backend.cursor.execute(
-            'UPDATE UserCommunities SET user_role_in_class = %s WHERE user_id = %s AND class_name = %s',
+        await backend.execute_query('UPDATE UserCommunities SET user_role_in_class = %s WHERE user_id = %s AND class_name = %s',
             (new_role, context.user_data['CHANGE_USER_ROLE_ID'], context.user_data['CURRENT_CLASS_NAME'],))
-        backend.connection.commit()
+        # backend.cursor.execute(
+        #     'UPDATE UserCommunities SET user_role_in_class = %s WHERE user_id = %s AND class_name = %s',
+        #     (new_role, context.user_data['CHANGE_USER_ROLE_ID'], context.user_data['CURRENT_CLASS_NAME'],))
+        # backend.connection.commit()
         return await backend.show_notification_screen(update, context, 'render',
                                                       USER_ROLE_WAS_SUCCESSFULLY_CHANGED,
                                                       [

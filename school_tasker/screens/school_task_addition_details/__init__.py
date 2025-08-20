@@ -4,7 +4,7 @@ from emoji import is_emoji
 from hammett.core import Button
 from hammett.core.constants import SourceTypes
 from hammett.core.handlers import register_button_handler, register_typing_handler
-from mysql.connector import OperationalError, IntegrityError
+from mysql.connector import OperationalError, IntegrityError, ProgrammingError
 
 import backend
 from constants import BUTTON_BACK, BUTTON_BACK_TO_MENU, ENTER_TEXT_OF_TASK, \
@@ -66,16 +66,24 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
             return await school_task_addition_details_month.SchoolTaskAdditionDetailsMonth().jump(update, context)
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_CLASS_NAME':
             new_community_name = update.message.text.replace(' ', '')
-            backend.cursor.execute('UPDATE Community SET name = %s WHERE name = %s',
+            await backend.execute_query('UPDATE Community SET name = %s WHERE name = %s',
                                    (new_community_name, context.user_data['CURRENT_CLASS_NAME'],))
-            backend.cursor.execute('UPDATE UserCommunities SET class_name = %s WHERE class_name = %s',
+            await backend.execute_query('UPDATE UserCommunities SET class_name = %s WHERE class_name = %s',
                                    (new_community_name, context.user_data['CURRENT_CLASS_NAME'],))
+            # backend.cursor.execute('UPDATE Community SET name = %s WHERE name = %s',
+            #                        (new_community_name, context.user_data['CURRENT_CLASS_NAME'],))
+            # backend.cursor.execute('UPDATE UserCommunities SET class_name = %s WHERE class_name = %s',
+            #                        (new_community_name, context.user_data['CURRENT_CLASS_NAME'],))
             with suppress(OperationalError):
-                backend.cursor.execute('ALTER TABLE ' + context.user_data[
+                await backend.execute_query('ALTER TABLE ' + context.user_data[
                     'CURRENT_CLASS_NAME'] + '_Items RENAME TO ' + new_community_name + '_Items')
-                backend.cursor.execute('ALTER TABLE ' + context.user_data[
+                await backend.execute_query('ALTER TABLE ' + context.user_data[
                     'CURRENT_CLASS_NAME'] + '_Tasks RENAME TO ' + new_community_name + '_Tasks')
-                backend.connection.commit()
+                # backend.cursor.execute('ALTER TABLE ' + context.user_data[
+                #     'CURRENT_CLASS_NAME'] + '_Items RENAME TO ' + new_community_name + '_Items')
+                # backend.cursor.execute('ALTER TABLE ' + context.user_data[
+                #     'CURRENT_CLASS_NAME'] + '_Tasks RENAME TO ' + new_community_name + '_Tasks')
+                # backend.connection.commit()
             context.user_data['CURRENT_CLASS_NAME'] = new_community_name
             context.user_data['CURRENT_TYPING_ACTION'] = ''
             return await backend.show_notification_screen(update, context, 'send',
@@ -108,38 +116,52 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
                                                                           source_type=SourceTypes.MOVE_SOURCE_TYPE)
                                                                    ]])
             else:
-                backend.cursor.execute(
-                    'UPDATE ' + context.user_data[
+                await backend.execute_query('UPDATE ' + context.user_data[
                         'CURRENT_CLASS_NAME'] + '_Tasks SET task_description = %s WHERE item_index = %s',
                     (context.user_data['ADDING_TASK_TASK_DESCRIPTION'], context.user_data['ADDING_TASK_INDEX'],))
-                backend.connection.commit()
-                backend.cursor.execute(
-                    'SELECT item_name FROM ' + context.user_data[
+                item_name = await backend.execute_query('SELECT item_name FROM ' + context.user_data[
                         'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
                     (context.user_data['ADDING_TASK_INDEX'],))
-                item_name = backend.cursor.fetchall()
+                # backend.cursor.execute(
+                #     'UPDATE ' + context.user_data[
+                #         'CURRENT_CLASS_NAME'] + '_Tasks SET task_description = %s WHERE item_index = %s',
+                #     (context.user_data['ADDING_TASK_TASK_DESCRIPTION'], context.user_data['ADDING_TASK_INDEX'],))
+                # backend.connection.commit()
+                # backend.cursor.execute(
+                #     'SELECT item_name FROM ' + context.user_data[
+                #         'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                #     (context.user_data['ADDING_TASK_INDEX'],))
+                # item_name = backend.cursor.fetchall()
                 item_name = get_clean_var(item_name, 'to_string', 0, True)
-                backend.cursor.execute(
-                    'SELECT item_index FROM ' + context.user_data[
+                context.user_data['ADDING_TASK_INDEX'] = await backend.execute_query('SELECT item_index FROM ' + context.user_data[
                         'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
                     (item_name,))
-                context.user_data['ADDING_TASK_INDEX'] = backend.cursor.fetchall()
+                # backend.cursor.execute(
+                #     'SELECT item_index FROM ' + context.user_data[
+                #         'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+                #     (item_name,))
+                # context.user_data['ADDING_TASK_INDEX'] = backend.cursor.fetchall()
                 context.user_data['ADDING_TASK_NAME'] = item_name
                 context.user_data['ADDING_TASK_INDEX'] = get_clean_var(context.user_data['ADDING_TASK_INDEX'],
                                                                         'to_string', 0, True)
-                backend.cursor.execute('SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks '
+                context.user_data['ADDING_TASK_GROUP_NUMBER'] = await backend.execute_query('SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks '
                                                                                                                'WHERE item_name = %s',
                                        (item_name,))
-                context.user_data['ADDING_TASK_GROUP_NUMBER'] = backend.cursor.fetchall()
+                # backend.cursor.execute('SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks '
+                #                                                                                                'WHERE item_name = %s',
+                #                        (item_name,))
+                # context.user_data['ADDING_TASK_GROUP_NUMBER'] = backend.cursor.fetchall()
                 context.user_data['ADDING_TASK_GROUP_NUMBER'] = get_clean_var(
                     context.user_data['ADDING_TASK_GROUP_NUMBER'], 'to_string', 0, True)
                 return await backend.send_update_notification(update, context, 'change',
                                                               context.user_data['ADDING_TASK_INDEX'],
                                                               True)
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_CLASS_PASSWORD':
-            backend.cursor.execute('UPDATE Community set password = %s WHERE name = %s',
+            await backend.execute_query('UPDATE Community set password = %s WHERE name = %s',
                                    (update.message.text, context.user_data['CURRENT_CLASS_NAME'],))
-            backend.connection.commit()
+            # backend.cursor.execute('UPDATE Community set password = %s WHERE name = %s',
+            #                        (update.message.text, context.user_data['CURRENT_CLASS_NAME'],))
+            # backend.connection.commit()
             return await backend.show_notification_screen(update, context, 'send',
                                                           PASSWORD_OF_YOUR_COMMUNITY_WAS_SUCCESSFULLY_CHANGED,
                                                           [
@@ -155,13 +177,19 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
                                                                       source_type=SourceTypes.MOVE_SOURCE_TYPE)
                                                                ]])
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_ITEM_NAME':
-            backend.cursor.execute('UPDATE ' + context.user_data[
+            # backend.cursor.execute('UPDATE ' + context.user_data[
+            #     'CURRENT_CLASS_NAME'] + '_Items SET main_name = %s WHERE main_name = %s',
+            #                        (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME']))
+            # backend.cursor.execute('UPDATE ' + context.user_data[
+            #     'CURRENT_CLASS_NAME'] + '_Tasks SET item_name = %s WHERE item_name = %s',
+            #                        (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+            # backend.connection.commit()
+            await backend.execute_query('UPDATE ' + context.user_data[
                 'CURRENT_CLASS_NAME'] + '_Items SET main_name = %s WHERE main_name = %s',
                                    (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME']))
-            backend.cursor.execute('UPDATE ' + context.user_data[
+            await backend.execute_query('UPDATE ' + context.user_data[
                 'CURRENT_CLASS_NAME'] + '_Tasks SET item_name = %s WHERE item_name = %s',
                                    (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
-            backend.connection.commit()
             context.user_data['CURRENT_TYPING_ACTION'] = ''
             return await backend.show_notification_screen(update, context, 'send',
                                                           ITEM_NAME_WAS_SUCCESSFULLY_CHANGED, [
@@ -186,10 +214,13 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
                                                               ]
                                                           ])
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_ITEM_ROD_NAME':
-            backend.cursor.execute('UPDATE ' + context.user_data[
+            # backend.cursor.execute('UPDATE ' + context.user_data[
+            #     'CURRENT_CLASS_NAME'] + '_Items SET rod_name = %s WHERE item_index = %s',
+            #                        (update.message.text, context.user_data['MANAGE_ITEM_INDEX']))
+            # backend.connection.commit()
+            await backend.execute_query('UPDATE ' + context.user_data[
                 'CURRENT_CLASS_NAME'] + '_Items SET rod_name = %s WHERE item_index = %s',
                                    (update.message.text, context.user_data['MANAGE_ITEM_INDEX']))
-            backend.connection.commit()
             context.user_data['CURRENT_TYPING_ACTION'] = ''
             return await backend.show_notification_screen(update, context, 'send',
                                                           ITEM_ROD_NAME_WAS_SUCCESSFULLY_CHANGED,
@@ -213,10 +244,13 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_ITEM_GROUPS':
             try:
                 if 0 < int(update.message.text) <= 98:
-                    backend.cursor.execute('UPDATE ' + context.user_data[
+                    # backend.cursor.execute('UPDATE ' + context.user_data[
+                    #     'CURRENT_CLASS_NAME'] + '_Items SET groups_list = %s WHERE main_name = %s',
+                    #                        (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+                    # backend.connection.commit()
+                    await backend.execute_query('UPDATE ' + context.user_data[
                         'CURRENT_CLASS_NAME'] + '_Items SET groups_list = %s WHERE main_name = %s',
                                            (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
-                    backend.connection.commit()
                     context.user_data['CURRENT_TYPING_ACTION'] = ''
                     return await backend.show_notification_screen(update, context, 'send',
                                                                   ITEM_GROUP_NUMBER_WAS_SUCCESSFULLY_CHANGED,
@@ -245,10 +279,13 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_ITEM_EMOJI':
             if len(update.message.text) - 1 == 1 and is_emoji(update.message.text):
                 context.user_data['CURRENT_TYPING_ACTION'] = ''
-                backend.cursor.execute('UPDATE ' + context.user_data[
+                await backend.execute_query('UPDATE ' + context.user_data[
                     'CURRENT_CLASS_NAME'] + '_Items SET emoji = %s WHERE main_name = %s',
                                        (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
-                backend.connection.commit()
+                # backend.cursor.execute('UPDATE ' + context.user_data[
+                #     'CURRENT_CLASS_NAME'] + '_Items SET emoji = %s WHERE main_name = %s',
+                #                        (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+                # backend.connection.commit()
                 return await backend.show_notification_screen(update, context, 'send',
                                                               ITEM_EMOJI_WAS_SUCCESSFULLY_CHANGED, [
                                                                   [Button(CHANGE_ITEM_EMOJI_AGAIN,
@@ -273,14 +310,21 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
             if len(update.message.text) - 1 == 1 and is_emoji(update.message.text):
                 context.user_data['CURRENT_TYPING_ACTION'] = ''
                 context.user_data['CREATING_ITEM_EMOJI'] = update.message.text
-                backend.cursor.execute('INSERT INTO ' + context.user_data[
+                await backend.execute_query('INSERT INTO ' + context.user_data[
                     'CURRENT_CLASS_NAME'] + '_Items (item_index, emoji, main_name, rod_name, groups_list) VALUES (%s, %s, %s, '
                                             '%s, %s)',
                                        (generate_id(), context.user_data['CREATING_ITEM_EMOJI'],
                                         context.user_data['CREATING_ITEM_NAME'],
                                         context.user_data['CREATING_ITEM_ROD_NAME'],
-                                        context.user_data['CREATING_ITEM_GROUPS']), )
-                backend.connection.commit()
+                                        context.user_data['CREATING_ITEM_GROUPS']))
+                # backend.cursor.execute('INSERT INTO ' + context.user_data[
+                #     'CURRENT_CLASS_NAME'] + '_Items (item_index, emoji, main_name, rod_name, groups_list) VALUES (%s, %s, %s, '
+                #                             '%s, %s)',
+                #                        (generate_id(), context.user_data['CREATING_ITEM_EMOJI'],
+                #                         context.user_data['CREATING_ITEM_NAME'],
+                #                         context.user_data['CREATING_ITEM_ROD_NAME'],
+                #                         context.user_data['CREATING_ITEM_GROUPS']), )
+                # backend.connection.commit()
                 return await backend.show_notification_screen(update, context, 'send',
                                                               YOUR_ITEM_WAS_SUCCESSFULLY_CREATED,
                                                               [
@@ -322,11 +366,10 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
             try:
                 context.user_data['CURRENT_CLASS_PASSWORD'] = update.message.text
                 context.user_data['CURRENT_TYPING_ACTION'] = ''
-                backend.cursor.execute('INSERT INTO Community (name, password) VALUES (%s,%s)',
+                await backend.execute_query('INSERT INTO Community (name, password) VALUES (%s,%s)',
                                        (context.user_data['CURRENT_CLASS_NAME'],
                                         context.user_data['CURRENT_CLASS_PASSWORD']))
-                backend.connection.commit()
-                backend.cursor.execute('''
+                await backend.execute_query('''
                 CREATE TABLE IF NOT EXISTS ''' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks' + ''' (
                 item_name TEXT,
                 item_index TEXT,
@@ -338,9 +381,25 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
                 hypertime TEXT
                 )
                 ''')
-                backend.cursor.execute('''
-                                            CREATE TABLE IF NOT EXISTS ''' + context.user_data[
-                    'CURRENT_CLASS_NAME'] + '_Items' + ''' (
+                # backend.cursor.execute('INSERT INTO Community (name, password) VALUES (%s,%s)',
+                #                        (context.user_data['CURRENT_CLASS_NAME'],
+                #                         context.user_data['CURRENT_CLASS_PASSWORD']))
+                # backend.connection.commit()
+                # backend.cursor.execute('''
+                # CREATE TABLE IF NOT EXISTS ''' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks' + ''' (
+                # item_name TEXT,
+                # item_index TEXT,
+                # group_number TEXT,
+                # task_description TEXT,
+                # task_day TEXT,
+                # task_month TEXT,
+                # task_year TEXT,
+                # hypertime TEXT
+                # )
+                # ''')
+                await backend.execute_query('''
+                                             CREATE TABLE IF NOT EXISTS ''' + context.user_data[
+                        'CURRENT_CLASS_NAME'] + '_Items' + ''' (
                                             item_index TEXT,
                                             emoji TEXT,
                                             main_name VARCHAR(255) UNIQUE,
@@ -348,25 +407,52 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen):
                                             groups_list TEXT
                                             )
                                             ''')
-                backend.cursor.execute(
-                    'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+                # backend.cursor.execute('''
+                #                             CREATE TABLE IF NOT EXISTS ''' + context.user_data[
+                #         'CURRENT_CLASS_NAME'] + '_Items' + ''' (
+                #                             item_index TEXT,
+                #                             emoji TEXT,
+                #                             main_name VARCHAR(255) UNIQUE,
+                #                             rod_name VARCHAR(255) UNIQUE,
+                #                             groups_list TEXT
+                #                             )
+                #                             ''')
+                await backend.execute_query('INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
                     (update.message.chat.id, context.user_data['CURRENT_CLASS_NAME'], "HOST"))
-                backend.connection.commit()
+                # backend.cursor.execute(
+                #     'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+                #     (update.message.chat.id, context.user_data['CURRENT_CLASS_NAME'], "HOST"))
+                # backend.connection.commit()
+                return await backend.show_notification_screen(update, context, 'send',
+                                                                YOUR_COMMUNITY_WAS_SUCCESSFULLY_CREATED,
+                                                                [
+                                                                    [Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
+                                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)
+                                                                    ]])
+            except IntegrityError:
+                context.user_data['CURRENT_TYPING_ACTION'] = 'CREATING_CLASS'
+                return await community_name_creation.CommunityNameCreation().jump(update, context)
+            except ProgrammingError:
+                pass
+                # await backend.execute_query('DROP TABLE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+                # await backend.execute_query('DROP TABLE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+                # backend.cursor.execute('DROP TABLE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+                # backend.cursor.execute('DROP TABLE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+                # backend.connection.commit()
                 return await backend.show_notification_screen(update, context, 'send',
                                                               YOUR_COMMUNITY_WAS_SUCCESSFULLY_CREATED,
                                                               [
                                                                   [Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
                                                                           source_type=SourceTypes.MOVE_SOURCE_TYPE)
                                                                    ]])
-            except IntegrityError:
-                context.user_data['CURRENT_TYPING_ACTION'] = 'CREATING_CLASS'
-                return await community_name_creation.CommunityNameCreation().jump(update, context)
         elif context.user_data['CURRENT_TYPING_ACTION'] == 'WRITING_PASSWORD_TO_JOIN':
             if update.message.text == context.user_data['ENTER_COMMUNITY_PASSWORD']:
-                backend.cursor.execute(
-                    'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+                await backend.execute_query('INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
                     (update.effective_user.id, context.user_data['ENTER_COMMUNITY_NAME'], 'ANONIM'))
-                backend.connection.commit()
+                # backend.cursor.execute(
+                #     'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+                #     (update.effective_user.id, context.user_data['ENTER_COMMUNITY_NAME'], 'ANONIM'))
+                # backend.connection.commit()
                 context.user_data['CURRENT_TYPING_ACTION'] = ''
                 return await backend.show_notification_screen(update, context, 'send',
                                                               YOU_SUCCESSFULLY_JOINED_COMMUNITY, [

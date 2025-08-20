@@ -70,13 +70,17 @@ class OldTaskAdditionAlert(base_screen.BaseScreen):
     async def change_task(self, update, context):
         from school_tasker.screens import school_task_change_main, main_menu, school_task_management_main
         self.task_args[5] = datetime.now().year
-        backend.cursor.execute('UPDATE SchoolTasker set task_day = %s, task_month = %s, task_year = %s WHERE item_index = %s',
+        await backend.execute_query('UPDATE SchoolTasker set task_day = %s, task_month = %s, task_year = %s WHERE item_index = %s',
                        (self.task_args[3], self.task_args[4], self.task_args[5], self.current_index,))
-        backend.connection.commit()
         hypertime = get_hypertime(self.task_args[4], self.task_args[3], self.task_args[5])
-        backend.cursor.execute("UPDATE SchoolTasker set hypertime = %s WHERE item_index = %s",
+        await backend.execute_query("UPDATE SchoolTasker set hypertime = %s WHERE item_index = %s",
                        (hypertime, self.current_index,))
-        backend.connection.commit()
+        # backend.cursor.execute('UPDATE SchoolTasker set task_day = %s, task_month = %s, task_year = %s WHERE item_index = %s',
+        #                (self.task_args[3], self.task_args[4], self.task_args[5], self.current_index,))
+        # backend.connection.commit()
+        # backend.cursor.execute("UPDATE SchoolTasker set hypertime = %s WHERE item_index = %s",
+        #                (hypertime, self.current_index,))
+        # backend.connection.commit()
         await backend.send_update_notification(update, context, "change", self.current_index, False)
         return await backend.show_notification_screen(update, context, 'send', "✅<strong>Задание успешно изменено!</strong>",
                                               [

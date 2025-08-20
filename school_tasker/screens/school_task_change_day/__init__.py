@@ -38,20 +38,27 @@ class SchoolTaskChangeDay(base_screen.BaseScreen):
     @register_button_handler
     async def get_day(self, update, context):
         await get_payload_safe(self, update, context, 'get_day_add_task', 'ADDING_TASK_TASK_DAY')
-        backend.cursor.execute(
-            'UPDATE ' + context.user_data[
+        await backend.execute_query('UPDATE ' + context.user_data[
                 'CURRENT_CLASS_NAME'] + '_Tasks SET task_day = %s WHERE item_index = %s',
             (context.user_data['ADDING_TASK_TASK_DAY'], context.user_data['ADDING_TASK_INDEX'],))
-        backend.connection.commit()
-        backend.cursor.execute(
-            'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        # backend.cursor.execute(
+        #     'UPDATE ' + context.user_data[
+        #         'CURRENT_CLASS_NAME'] + '_Tasks SET task_day = %s WHERE item_index = %s',
+        #     (context.user_data['ADDING_TASK_TASK_DAY'], context.user_data['ADDING_TASK_INDEX'],))
+        # backend.connection.commit()
+        item_name = await backend.execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
             (context.user_data['ADDING_TASK_INDEX'],))
-        item_name = backend.cursor.fetchall()
+        # backend.cursor.execute(
+        #     'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        #     (context.user_data['ADDING_TASK_INDEX'],))
+        # item_name = backend.cursor.fetchall()
         item_name = get_clean_var(item_name, 'to_string', 0, True)
-        backend.cursor.execute(
-            'SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        context.user_data['ADDING_TASK_INDEX'] = await backend.execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
             (item_name,))
-        context.user_data['ADDING_TASK_INDEX'] = backend.cursor.fetchall()
+        # backend.cursor.execute(
+        #     'SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        #     (item_name,))
+        # context.user_data['ADDING_TASK_INDEX'] = backend.cursor.fetchall()
         context.user_data['ADDING_TASK_INDEX'] = get_clean_var(context.user_data['ADDING_TASK_INDEX'],
                                                                 'to_string', 0, True)
         return await backend.send_update_notification(update, context, 'change',

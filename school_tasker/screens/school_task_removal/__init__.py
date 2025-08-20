@@ -15,14 +15,16 @@ class SchoolTaskRemoval(base_screen.BaseScreen):
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import school_task_management_main
-        backend.cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-        db_check = backend.cursor.fetchall()
+        db_check = await backend.execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # backend.cursor.execute('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # db_check = backend.cursor.fetchall()
         try:
             db_check = get_clean_var(db_check, "to_string", False, True)
         except IndexError:
             db_check = ""
-        backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
-        db_length = backend.cursor.fetchall()
+        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+        # db_length = backend.cursor.fetchall()
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         keyboard = []
         for task_index in range(db_length):

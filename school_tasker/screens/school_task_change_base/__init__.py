@@ -44,10 +44,12 @@ class SchoolTaskChangeBase(base_screen.BaseScreen):
                        source_type=SourceTypes.MOVE_SOURCE_TYPE)
             ]
         ]
-        backend.cursor.execute(
-            'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        groups = await backend.execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
             (check_item,))
-        groups = backend.cursor.fetchall()
+        # backend.cursor.execute(
+        #     'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        #     (check_item,))
+        # groups = backend.cursor.fetchall()
         groups = get_clean_var(groups, 'to_string', 0, True)
         if int(groups) > 1:
             keyboard.insert(2, [

@@ -14,7 +14,6 @@ from utils import get_username
 
 
 class SchoolTaskRemovalConfirmation(base_screen.BaseScreen):
-    deletion_index = 0
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import school_task_removal
@@ -49,10 +48,12 @@ class SchoolTaskRemovalConfirmation(base_screen.BaseScreen):
             formatted_index = await backend.get_var_from_database(task_index, "item_index", True, context)
             name = get_username(user.first_name, user.last_name, user.username)
             await backend.logger_alert([name, user.id], "delete", formatted_index, False, context)
-            backend.cursor.execute(
-                '''DELETE FROM ''' + context.user_data['CURRENT_CLASS_NAME'] + '''_Tasks WHERE item_index = %s''',
+            await backend.execute_query('''DELETE FROM ''' + context.user_data['CURRENT_CLASS_NAME'] + '''_Tasks WHERE item_index = %s''',
                 (formatted_index,))
-            backend.connection.commit()
+            # backend.cursor.execute(
+            #     '''DELETE FROM ''' + context.user_data['CURRENT_CLASS_NAME'] + '''_Tasks WHERE item_index = %s''',
+            #     (formatted_index,))
+            # backend.connection.commit()
             if exists(str(settings.MEDIA_ROOT) + '/' + formatted_index):
                 rmtree(str(settings.MEDIA_ROOT) + '/' + formatted_index)
             database_length = await backend.get_var_from_database(None, "database_length_SchoolTasker", True, context)
