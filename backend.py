@@ -1,426 +1,915 @@
-from calendar import monthrange
-from datetime import date
-from secrets import token_urlsafe
+from contextlib import suppress
 from logging import getLogger
-from random import choice, randint
-from hammett.core.exceptions import PayloadIsEmpty
-from sqlite3 import connect
-from time import gmtime, strftime
-from json import loads
-from constants import *
+from os import listdir, makedirs, remove
+from os.path import exists
 
-connection = connect('school_tasker_database.db')
+from bs4 import BeautifulSoup
+from hammett.conf import settings
+from hammett.core import Button
+from hammett.core.constants import RenderConfig, SourceTypes
+from mysql.connector import IntegrityError, connect
+from PIL import Image
+from telegram.error import BadRequest, Forbidden
+
+from captions import BUTTON_BACK_TO_MENU
+from utils import *
+
+connection = connect(
+    host=str(settings.DATABASE_HOST),
+    user=str(settings.DATABASE_USER),
+    password=str(settings.DATABASE_PASSWORD),
+    database=str(settings.DATABASE_NAME),
+    port=str(settings.DATABASE_PORT),
+)
+
 cursor = connection.cursor()
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS SchoolTasker (
-item_name TEXT,
-item_index INTEGER,
-group_number INTEGER,
-task_description TEXT,
-task_day INT,
-task_month INT,
-task_year INT,
-hypertime INT
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Community (
+name VARCHAR(255) UNIQUE,
+password VARCHAR(255) UNIQUE
 )
-''')
-cursor.execute('''
+""")
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS Users (
-user_permission TEXT,
-user_id INT PRIMARY KEY,
-user_name TEXT
+send_notification TEXT,
+id VARCHAR(255) PRIMARY KEY,
+name TEXT
 )
-''')
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS UserCommunities (
+user_id TEXT,
+class_name TEXT,
+user_role_in_class TEXT
+)
+""")
 LOGGER = getLogger('hammett')
 
 
-# def media_handler(func):
-#     async def wrapper(self, update, context, *args, **kwargs):
-#         message = update.message
-#         if message.photo:
-#             file = message.photo[-1]
-#             file_id = file.file_id
-#             file = await context.bot.get_file(file_id)
-#             await file.download('image.jpg')
-#             await update.message.reply_text("GOT IMAGE!")
-#         elif message.video:
-#             file_id = message.video.file_id
-#             file = await context.bot.get_file(file_id)
-#             await file.download('video.mp4')
-#             await update.message.reply_text("GOT VIDEO!")
-#
-#         elif message.audio:
-#             file_id = message.audio.file_id
-#             file = await context.bot.get_file(file_id)
-#             await file.download('audio.mp3')
-#             await update.message.reply_text("GOT AUDIO!")
-#         else:
-#             await update.message.reply_text("UNSUPORRTED FILE!")
-#         return await func(self, update, context, *args, **kwargs)
-#     return wrapper
+async def _execute_query(query, params=None):
+    if params is None:
+        params = ()
+    cursor.execute(query, params)
+    operation = query.strip().split()[0].upper()
+    if operation == 'SELECT':
+        return cursor.fetchall()
+    connection.commit()
+    return None
 
 
-class Global:
-    last_day = int()
-    last_month = int()
-    last_year = int()
-    index_store = int(0)
-    open_date = True
-    is_changing_task_description = False
-    is_changing_day = False
-    is_changing_month = False
-    is_changing_group_number = False
+async def get_count_of_class_items(context):
+    return await _execute_query(
+        'SELECT COUNT(*) FROM ' +
+        context.user_data['CURRENT_CLASS_NAME'] +
+        '_Items',
+    )
 
 
-async def get_week_day(task_year, task_month_int: int, task_day: int):
-    week_day = date(int(task_year), task_month_int, task_day)
-    week_day_new = WEEK_DAYS[week_day.weekday()]
-    return str(week_day_new)
+async def get_main_name_of_class_item(context):
+    return await _execute_query('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def get_greet(name):
-    attach = None
-    greet = "<strong>"
-    if datetime.now().hour < 4:
-        greet += choice(["🌕", "🌙"])
-        greet += "Доброй ночи, "
-        attach = GREET_NIGHT[randint(0, 2)]
-    elif 4 <= datetime.now().hour < 12:
-        greet += choice(["🌅", "🌄"])
-        greet += "Доброе утро, "
-        attach = GREET_MORNING[randint(0, 2)]
-    elif 12 <= datetime.now().hour < 17:
-        greet += choice(["🌞", "☀️"])
-        greet += "Добрый день, "
-        attach = GREET_DAY[randint(0, 2)]
-    elif 17 <= datetime.now().hour < 23:
-        greet += choice(["🌅", "🌄"])
-        greet += "Добрый вечер, "
-        attach = GREET_EVENING[randint(0, 2)]
-    else:
-        greet += choice(["🌕", "🌙"])
-        greet += "Доброй ночи, "
-        attach = GREET_NIGHT[randint(0, 2)]
-    greet += name + "!👋" + attach + "</strong>"
-    return greet
+async def get_emoji_of_class_item(context):
+    return await _execute_query('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def get_clean_var(var, new_var_type: str, index: int, need_clear: bool):
-    var = str(var[index])
-    if new_var_type == "to_string":
-        if need_clear:
-            if var[0] == "(":
-                var = var[1: -1]
-            if var[-1] == ',':
-                var = var[0: -1]
-            if var[0] == "'":
-                var = var[1: -1]
-        return str(var)
-    if new_var_type == "to_int":
-        if var[0] == "(":
-            var = var[1: -1]
-        if var[-1] == ',':
-            var = var[0: -1]
-        return int(var)
+async def update_item_name_of_task(context):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks set item_name = %s WHERE item_index = %s',
+                         (context.user_data['task_item'], context.user_data['task_index']))
 
 
-async def recognise_month(month):
-    month_dict = {"1": "января",
-                  "2": "февраля",
-                  "3": "марта",
-                  "4": "апреля",
-                  "5": "мая",
-                  "6": "июня",
-                  "7": "июля",
-                  "8": "августа",
-                  "9": "сентября",
-                  "10": "октября",
-                  "11": "ноября",
-                  "12": "декабря",
-                  }
-    month = month_dict[str(month)]
-    return month
+async def get_rod_name_of_class_item(context):
+    return await _execute_query('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def recognise_n_tag(text: str):
-    if r"\n" in text:
-        text = text.replace(r"\n", "\n")
-    return text
+async def get_group_of_class_item(context):
+    return await _execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def check_task_validity(day: int, month: int, year: int):
-    if str(year) > str(datetime.now().year):
-        return True
-    elif str(year) == str(datetime.now().year):
-        if str(month) > str(datetime.now().month):
-            return True
-        elif int(month) == int(datetime.now().month):
-            if int(day) > int(datetime.now().day):
-                return True
+async def get_item_index_of_class_item(context):
+    return await _execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+
+
+async def get_count_of_community():
+    return await _execute_query('SELECT COUNT(*) FROM Community')
+
+
+async def get_name_of_community():
+    return await _execute_query('SELECT name FROM Community')
+
+
+async def get_count_of_classes_with_class_name_and_user_id(context, update):
+    return await _execute_query(
+        'SELECT COUNT(*) '
+        'FROM UserCommunities '
+        'WHERE class_name = %s '
+        'AND user_id = %s',
+        (context.user_data['ENTER_COMMUNITY_NAME'], update.effective_user.id),
+    )
+
+
+async def get_password_of_community_by_name(context):
+    return await _execute_query('SELECT password FROM Community WHERE name = %s',
+                                (context.user_data['CURRENT_CLASS_NAME'],))
+
+
+async def get_count_of_user_communities_by_name(context):
+    return await _execute_query('SELECT COUNT(*) FROM UserCommunities WHERE class_name = %s',
+                                (context.user_data['CURRENT_CLASS_NAME'],))
+
+
+async def get_count_of_user_communities_by_id(update):
+    return await _execute_query('SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s',
+                                (update.effective_user.id,))
+
+
+async def get_count_of_user_communities_where_user_is_host(update):
+    return await _execute_query(
+        'SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s and user_role_in_class = "HOST"',
+        (update.effective_user.id,))
+
+
+async def get_count_of_user_communities_where_user_is_host_or_admin(update):
+    return await _execute_query(
+        "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
+        (update.effective_user.id,))
+
+
+async def get_class_name_of_user_communities_where_user_is_host_or_admin(update):
+    return await _execute_query(
+        "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
+        (update.effective_user.id,))
+
+
+async def get_count_of_user_communities_by_user_id(update):
+    return await _execute_query('SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s', (update.effective_user.id,))
+
+
+async def get_class_name_of_user_communities_by_user_id(update):
+    return await _execute_query('SELECT class_name FROM UserCommunities WHERE user_id = %s',
+                                (update.effective_user.id,))
+
+
+async def get_user_id_from_user_communities_by_class_name_and_user_id(context, update):
+    return await _execute_query('SELECT user_id FROM UserCommunities WHERE class_name = %s AND user_id != %s',
+                                (context.user_data['CURRENT_CLASS_NAME'], update.effective_user.id))
+
+
+async def get_name_from_users_by_id(user_id):
+    return await _execute_query('SELECT name FROM Users WHERE id = %s', (user_id,))
+
+
+async def get_role_from_user_community_by_id_and_class_name(context):
+    return await _execute_query('SELECT user_role_in_class FROM UserCommunities WHERE user_id = %s AND class_name = %s',
+                                (context.user_data['CHANGE_USER_ROLE_ID'],
+                                 context.user_data['CURRENT_CLASS_NAME']))
+
+
+async def get_class_name_from_user_community_by_id(update):
+    return await _execute_query('SELECT class_name FROM UserCommunities WHERE user_id = %s',
+                                (update.effective_user.id,))
+
+
+async def get_send_notification_from_users_by_id(user_id):
+    return await _execute_query('SELECT send_notification FROM Users WHERE id = %s', (user_id,))
+
+
+async def update_users_set_send_notification_by_user_id(notification_permission, user):
+    await _execute_query('UPDATE Users set send_notification = %s WHERE id = %s', (notification_permission, user.id))
+
+
+async def get_groups_by_name(context, check_item):
+    return await _execute_query(
+        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (check_item,))
+
+
+async def update_class_tasks_set_task_day_by_id(context):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks SET task_day = %s WHERE item_index = %s',
+                         (context.user_data['ADDING_TASK_TASK_DAY'], context.user_data['ADDING_TASK_INDEX']))
+    day = await _execute_query(
+        'SELECT task_day FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    day = get_clean_var(day, 'to_string', 0, True)
+    year = await _execute_query(
+        'SELECT task_year FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    year = get_clean_var(year, 'to_string', 0, True)
+    hypertime = get_hypertime(context.user_data['ADDING_TASK_TASK_MONTH'], int(day), int(year))
+    await _execute_query(
+        'UPDATE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks SET hypertime = %s WHERE item_index = %s',
+        (hypertime, context.user_data['ADDING_TASK_INDEX'],))
+
+
+async def update_community_set_name_by_name(new_community_name, context):
+    await _execute_query('UPDATE Community SET name = %s WHERE name = %s',
+                         (new_community_name, context.user_data['CURRENT_CLASS_NAME']))
+
+
+async def get_item_name_from_community_task_by_index(context):
+    return await _execute_query(
+        'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+
+
+async def get_item_index_from_community_items_by_index(context, item_name):
+    return await _execute_query(
+        'SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+
+
+async def update_community_task_set_group_number_by_index(context):
+    await _execute_query(
+        'UPDATE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks SET group_number = %s WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_GROUP_NUMBER'], context.user_data['ADDING_TASK_INDEX']))
+
+
+async def get_item_name_from_community_tasks_by_index(context, media_index):
+    return await _execute_query(
+        'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (media_index,))
+
+
+async def get_item_index_from_community_items_by_main_name(context, item_name):
+    return await _execute_query(
+        'SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+
+
+async def get_all_from_community_tasks(context):
+    return await _execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+
+
+async def get_count_from_community_tasks(context):
+    return await _execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+
+
+async def get_item_index_from_community_tasks(context):
+    return await _execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+
+
+async def update_community_tasks_set_task_month_by_index(context):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks SET task_month = %s WHERE item_index = %s',
+                         (context.user_data['ADDING_TASK_TASK_MONTH'], context.user_data['ADDING_TASK_INDEX']))
+    day = await _execute_query(
+        'SELECT task_day FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    day = get_clean_var(day, 'to_string', 0, True)
+    year = await _execute_query(
+        'SELECT task_year FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    year = get_clean_var(year, 'to_string', 0, True)
+    hypertime = get_hypertime(context.user_data['ADDING_TASK_TASK_MONTH'], int(day), int(year))
+    await _execute_query(
+        'UPDATE ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks SET hypertime = %s WHERE item_index = %s',
+        (hypertime, context.user_data['ADDING_TASK_INDEX'],))
+
+
+async def get_all_from_community_task(context):
+    return await _execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+
+
+async def get_count_of_community_tasks(context):
+    return await _execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+
+
+async def get_item_index_from_community_tasks_order_by(context):
+    return await _execute_query('SELECT item_index FROM ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC')
+
+
+async def get_group_from_community_tasks_by_name(context, media_item_name):
+    return await _execute_query('SELECT groups_list FROM ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s', (media_item_name,))
+
+
+async def get_group_number_from_community_tasks_by_index(context, media_index):
+    return await _execute_query('SELECT group_number FROM ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s', (media_index,))
+
+
+async def get_task_description_from_community_tasks_by_index(context, media_index):
+    return await _execute_query('SELECT task_description FROM ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s', (media_index,))
+
+
+async def delete_task_from_community_tasks_by_index(context, task_id):
+    await _execute_query('DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                         (task_id,))
+
+
+async def get_name_from_users_by_index(context):
+    return await _execute_query('SELECT name FROM Users WHERE id = %s', (context.user_data['CHANGE_USER_ROLE_ID'],))
+
+
+async def update_user_communities_set_user_role_by_user_id_and_class_name(new_role, context):
+    await _execute_query('UPDATE UserCommunities SET user_role_in_class = %s WHERE user_id = %s AND class_name = %s',
+                         (new_role, context.user_data['CHANGE_USER_ROLE_ID'], context.user_data['CURRENT_CLASS_NAME']))
+
+
+async def add_or_update_user(user_id, user_name, success_outcome, failure_outcome):
+    try:
+        await _execute_query('INSERT INTO Users (send_notification, id, name) '
+                             'VALUES'
+                             '(%s,%s,%s)', (1, str(user_id), user_name))
+        return success_outcome
+    except IntegrityError or AttributeError:
+        await _execute_query('UPDATE Users SET name = %s WHERE id = %s', (user_name, user_id))
+        return failure_outcome
+
+
+async def get_count_of_user_communities_by_user_id_where_user_is_host(update):
+    return await _execute_query(
+        "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
+        (update.effective_user.id,))
+
+
+async def get_class_name_of_user_communities_by_user_id_where_user_is_host(update):
+    return await _execute_query(
+        "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class  = 'HOST'",
+        (update.effective_user.id,))
+
+
+async def delete_task(context, formatted_index):
+    await _execute_query(
+        """DELETE FROM """ + context.user_data['CURRENT_CLASS_NAME'] + """_Tasks WHERE item_index = %s""",
+        (formatted_index,))
+
+
+async def delete_item(context):
+    await _execute_query('DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+                         (context.user_data['MANAGE_ITEM_INDEX'],))
+
+
+async def delete_task_from_deleted_item(context):
+    await _execute_query('DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s',
+                         (context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+
+
+async def update_user_community_set_class_name_by_class_name(new_community_name, context):
+    await _execute_query('UPDATE UserCommunities SET class_name = %s WHERE class_name = %s',
+                         (new_community_name, context.user_data['CURRENT_CLASS_NAME']))
+
+
+async def rename_items_table(context, new_community_name):
+    await _execute_query('ALTER TABLE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items RENAME TO ' + new_community_name + '_Items')
+
+
+async def rename_tasks_table(context, new_community_name):
+    await _execute_query('ALTER TABLE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks RENAME TO ' + new_community_name + '_Tasks')
+
+
+async def update_task_description(context):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks SET task_description = %s WHERE item_index = %s',
+                         (context.user_data['ADDING_TASK_TASK_DESCRIPTION'],
+                          context.user_data['ADDING_TASK_INDEX']))
+
+
+async def get_item_name_from_tasks_by_item_index(context):
+    return await _execute_query('SELECT item_name FROM ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s', (context.user_data['ADDING_TASK_INDEX'],))
+
+
+async def get_item_index_from_items_by_main_name(context, item_name):
+    return await _execute_query(
+        'SELECT item_index FROM ' + context.user_data[
+            'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s', (item_name,))
+
+
+async def get_group_number_from_tasks_by_item_index(context, item_index):
+    return await _execute_query(
+        'SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks '
+                                                                                'WHERE item_index = %s',
+        (item_index,))
+
+
+async def update_community_password_by_name(update, context):
+    await _execute_query('UPDATE Community set password = %s WHERE name = %s',
+                         (update.message.text, context.user_data['CURRENT_CLASS_NAME']))
+
+
+async def update_items_set_main_name_by_main_name(context, update):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items SET main_name = %s WHERE main_name = %s',
+                         (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME']))
+
+
+async def update_tasks_set_item_name_by_item_name(context, update):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Tasks SET item_name = %s WHERE item_name = %s',
+                         (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME']))
+
+
+async def update_items_set_rod_name_by_item_index(context, update):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items SET rod_name = %s WHERE item_index = %s',
+                         (update.message.text, context.user_data['MANAGE_ITEM_INDEX']))
+
+
+async def update_items_set_groups_list_by_main_name(context, update):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items SET groups_list = %s WHERE main_name = %s',
+                         (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+
+
+async def update_items_set_emoji_by_main_name(context, update):
+    await _execute_query('UPDATE ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items SET emoji = %s WHERE main_name = %s',
+                         (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+
+
+async def create_new_school_item(context):
+    await _execute_query('INSERT INTO ' + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items (item_index, emoji, main_name, rod_name, groups_list) VALUES (%s, %s, %s, '
+                                '%s, %s)', (generate_id(), context.user_data['CREATING_ITEM_EMOJI'],
+                                            context.user_data['CREATING_ITEM_NAME'],
+                                            context.user_data['CREATING_ITEM_ROD_NAME'],
+                                            context.user_data['CREATING_ITEM_GROUPS']))
+
+
+async def create_community_table(context):
+    await _execute_query('INSERT INTO Community (name, password) VALUES (%s,%s)',
+                         (context.user_data['CURRENT_CLASS_NAME'],
+                          context.user_data['CURRENT_CLASS_PASSWORD']))
+
+
+async def create_tasks_table(context):
+    await _execute_query("""
+                CREATE TABLE IF NOT EXISTS """ + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks' + """ (
+                item_name TEXT,
+                item_index TEXT,
+                group_number TEXT,
+                task_description TEXT,
+                task_day TEXT,
+                task_month TEXT,
+                task_year TEXT,
+                hypertime TEXT
+                )
+                """)
+
+
+async def create_items_table(context):
+    await _execute_query("""
+                                             CREATE TABLE IF NOT EXISTS """ + context.user_data[
+        'CURRENT_CLASS_NAME'] + '_Items' + """ (
+                                            item_index TEXT,
+                                            emoji TEXT,
+                                            main_name VARCHAR(255) UNIQUE,
+                                            rod_name VARCHAR(255) UNIQUE,
+                                            groups_list TEXT
+                                            )
+                                            """)
+
+
+async def add_new_community(update, context):
+    await _execute_query(
+        'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+        (update.message.chat.id, context.user_data['CURRENT_CLASS_NAME'], 'HOST'))
+
+
+async def add_user_to_community(update, context):
+    await _execute_query(
+        'INSERT INTO UserCommunities (user_id, class_name, user_role_in_class) VALUES (%s,%s,%s)',
+        (update.effective_user.id, context.user_data['ENTER_COMMUNITY_NAME'], 'ANONIM',))
+
+
+async def get_users_to_send_notification(context):
+    return await _execute_query(
+        'SELECT id FROM Users WHERE send_notification = 1 AND id IN (SELECT user_id FROM UserCommunities WHERE class_name = %s)',
+        (context.user_data['CURRENT_CLASS_NAME'],))
+
+
+async def get_username_by_id(user_id):
+    return await _execute_query('SELECT name FROM Users WHERE id = %s', (user_id,))
+
+
+async def show_notification_screen(update, context, translation_type: str, description, keyboard):
+    from school_tasker.screens.screen_notification import ScreenNotification
+    new_config = RenderConfig()
+    new_config.description = description
+    new_config.keyboard = keyboard
+    if translation_type == 'send':
+        return await ScreenNotification().send(context, config=new_config)
+    elif translation_type == 'render':
+        return await ScreenNotification().render(update, context, config=new_config)
+
+
+async def send_update_notification(update, context, status, index, is_order: bool, logger_status):
+    from school_tasker.screens import main_menu
+    from school_tasker.screens.carousel_notification_screen import CarouselNotificationScreen
+    from school_tasker.screens.school_task_change_main import SchoolTaskChangeMain
+    from school_tasker.screens.school_task_management_main import SchoolTaskManagementMain
+    from school_tasker.screens.static_notification_screen import StaticNotificationScreen
+    user = update.effective_user
+    name = get_username(user.first_name, user.last_name, user.username)
+    await logger_alert([name, user.id], logger_status, index, is_order, context)
+    task_description = await get_var_from_database(index, 'task_description', is_order, context)
+    task_day = await get_var_from_database(index, 'task_day', is_order, context)
+    task_month = await get_var_from_database(index, 'task_month', is_order, context)
+    task_month_int = int(task_month)
+    task_month = recognise_month(task_month)
+    task_year = await get_var_from_database(index, 'task_year', is_order, context)
+    user_id_list = []
+    extracted_id = await get_users_to_send_notification(context)
+    for id_row in extracted_id:
+        id_row = list(id_row)
+        id_row = int(id_row[0])
+        user_id_list.append(id_row)
+    for user_id in user_id_list:
+        user_name = await get_username_by_id(user_id)
+        user_name = get_clean_var(user_name, 'to_string', 0, True)
+        notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
+        notification_title += await get_notification_title(context, task_description, task_day, task_month_int,
+                                                           task_month,
+                                                           task_year, logger_status)
+        new_config = RenderConfig(
+            chat_id=user_id,
+        )
+        try:
+            if len(context.user_data['MEDIA_ADD']) > 1:
+                new_notification = CarouselNotificationScreen()
             else:
-                return False
-        else:
-            return False
+                new_notification = StaticNotificationScreen()
+                new_notification.images = []
+            if exists(str(settings.MEDIA_ROOT) + '/' + str(index) + '/'):
+                add_images = listdir(str(settings.MEDIA_ROOT) + '/' + str(index) + '/')
+                for image in add_images:
+                    path = str(index) + '/' + str(image)
+                    item = [settings.MEDIA_ROOT / path, notification_title]
+                    new_notification.images.append(item)
+                if len(context.user_data['MEDIA_ADD']) == 1:
+                    new_notification.description = notification_title
+                    new_notification.current_images = new_notification.images[0]
+                    new_notification.cover = new_notification.current_images[0]
+            else:
+                new_notification.images = [
+                    [settings.MEDIA_ROOT / 'logo.webp', notification_title],
+                ]
+                new_notification.description = notification_title
+        except KeyError:
+            new_notification = StaticNotificationScreen()
+            new_notification.description = notification_title
+            new_notification.images = [
+                [settings.MEDIA_ROOT / 'logo.webp', notification_title],
+            ]
+        new_config.keyboard = [
+            [
+                Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
+                       source_type=SourceTypes.JUMP_SOURCE_TYPE),
+            ],
+        ]
+        try:
+            await new_notification.send(context, config=new_config, extra_data=None)
+        except Forbidden:
+            pass
+        except BadRequest:
+            for x in range(0, len(notification_title), settings.MAX_CAPTION_LENGTH):
+                current_description = notification_title[x:x + settings.MAX_CAPTION_LENGTH]
+                save_markers = save_html_markers(current_description)
+                soup = BeautifulSoup(save_markers, 'html.parser')
+                soup.prettify()
+                current_description = str(soup)
+                current_description = load_html_markers(current_description)
+                current_description = '<strong>' + current_description + '</strong>'
+                if x + settings.MAX_CAPTION_LENGTH >= len(notification_title):
+                    new_config.description = current_description
+                    return await new_notification.send(context, config=new_config)
+                else:
+                    await update.effective_chat.send_message(current_description, parse_mode='HTML')
+        with suppress(KeyError):
+            context.user_data['MEDIA_ADD'].clear()
+        if logger_status == 'change' or status == 'change':
+            return await show_notification_screen(update, context, 'send',
+                                                  '✅<strong>Задание успешно изменено!</strong>', [
+                                                      [Button('⬅️ В меню редактора', SchoolTaskManagementMain,
+                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)],
+                                                      [Button('⬅ Изменить ещё задания', SchoolTaskChangeMain,
+                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)],
+                                                      [Button('⬅️ На главный экран', main_menu.MainMenu,
+                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)]])
+
+
+async def add_task_school(update, context, task_item, task_description, group_number, task_day, task_month,
+                          task_year):
+    from school_tasker.screens import main_menu
+    from school_tasker.screens.school_task_addition import SchoolTaskAddition
+    from school_tasker.screens.school_task_management_main import SchoolTaskManagementMain
+    db_length = await _execute_query(
+        'SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+        (context.user_data['ADDING_TASK_INDEX'],))
+    db_length = get_clean_var(db_length, 'to_int', 0, True)
+    if db_length > 0:
+        hypertime = get_hypertime(int(task_month), int(task_day), int(task_year))
+        await _execute_query(
+            'INSERT INTO ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks (item_name, item_index, group_number, '
+                                                                       'task_description, task_day, task_month,'
+                                                                       'task_year, hypertime)'
+                                                                       'VALUES'
+                                                                       '(%s,%s,%s,%s,%s,%s,%s,%s)',
+            (task_item, context.user_data['ADD_TASK_ITEM_INDEX'], group_number, task_description,
+             task_day, task_month, task_year, hypertime))
+        with suppress(KeyError):
+            if context.user_data['MEDIA_ADD']:
+                makedirs('media/' + context.user_data['ADD_TASK_ITEM_INDEX'])
+                for file in context.user_data['MEDIA_ADD']:
+                    filename = context.user_data['ADD_TASK_ITEM_INDEX'] + '/' + str(generate_id())
+                    title = 'media/'
+                    original = title + filename
+                    await file.download_to_drive(original + '.jpeg')
+                    await convert_to_webp(original + '.jpeg', original + '.webp')
+                    remove(original + '.jpeg')
+        context.user_data['IS_IN_MEDIA_SCREEN'] = False
+        await send_update_notification(update, context, 'add', context.user_data['ADD_TASK_ITEM_INDEX'],
+                                       False, 'add')
+        return await show_notification_screen(update, context, 'send', '✅<strong>Задание успешно добавлено!</strong>',
+                                              [
+                                                  [Button('⬅️ В меню редактора', SchoolTaskManagementMain,
+                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                   ],
+                                                  [Button('⬅️ Добавить ещё задание', SchoolTaskAddition,
+                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE)],
+                                                  [Button('⬅️ На главный экран', main_menu.MainMenu,
+                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE)]])
     else:
-        return False
+        return await show_notification_screen(update, context, 'render',
+                                              '<strong>Перед добавлением данного задания предмет был удалён!</strong>',
+                                              [
+                                                  [Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
+                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                   ]])
 
 
-async def update_day(check_month, task_day):
-    if task_day <= int(monthrange(int(strftime("%Y", gmtime())), int(check_month))[1]):
-        return task_day
-    else:
-        return False
+async def convert_to_webp(input_path: str, output_path: str):
+    img = Image.open(input_path).convert('RGB')
+    img.save(output_path, 'webp', optimize=True , quality=80)
 
 
-async def get_user_month(month):
-    months_dict = {
-        1: ["Январь", "Января", "январь", "января"],
-        2: ["Февраль", "Февраля", "февраль", "февраля"],
-        3: ["Март", "Марта", "март", "марта"],
-        4: ["Апрель", "Апреля", "апрель", "апреля"],
-        5: ["Май", "Мая", "май", "мая"],
-        6: ["Июнь", "Июня", "июнь", "июня"],
-        7: ["Июль", "Июля", "июль", "июля"],
-        8: ["Август", "Августа", "август", "августа"],
-        9: ["Сентябрь", "Сентября", "сентябрь", "сентября"],
-        10: ["Октябрь", "Октября", "октябрь", "октября"],
-        11: ["Ноябрь", "Ноября", "ноябрь", "ноября"],
-        12: ["Декабрь", "Декабря", "декабрь", "декабря"],
-    }
-    for i in months_dict:
-        month_list = months_dict[i]
-        for a in month_list:
-            if a == month:
-                new_month = i
-                return new_month
-
-
-async def update_month(check_day, task_month):
-    check_month = await get_user_month(task_month)
-    if check_day <= int(monthrange(int(strftime("%Y", gmtime())), check_month)[1]):
-        return check_month
-    else:
-        return False
-
-
-async def get_hypertime(month: int, day: int, year: int):
-    if int(month) < 10:
-        hypertime = str(year) + "0" + str(month)
-    else:
-        hypertime = str(year) + str(month)
-    if day < 10:
-        hypertime += "0"
-    hypertime += str(day)
-    return str(hypertime)
-
-
-async def get_var_from_database(index, need_variable, order: bool):
-    global cursor
+async def get_var_from_database(index, need_variable, order: bool, context):
     if order:
-        variable_order = {"item_name": "SELECT item_name FROM SchoolTasker ORDER BY hypertime ASC",
-                          "group_number": "SELECT group_number FROM SchoolTasker ORDER BY hypertime ASC",
-                          "task_description": "SELECT task_description FROM SchoolTasker ORDER BY hypertime ASC",
-                          "task_day": "SELECT task_day FROM SchoolTasker ORDER BY hypertime ASC",
-                          "task_month": "SELECT task_month FROM SchoolTasker ORDER BY hypertime ASC",
-                          "item_index": "SELECT item_index FROM SchoolTasker ORDER BY hypertime ASC",
-                          "database_length_SchoolTasker": "SELECT count(*) FROM SchoolTasker",
-                          "database_length_Users": "SELECT count(*) FROM SchoolTasker",
-                          "task_year": "SELECT task_year FROM SchoolTasker ORDER BY hypertime ASC"}
+        variable_order = {'item_name': 'SELECT item_name FROM ' + context.user_data[
+            'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'group_number': 'SELECT group_number FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'task_description': 'SELECT task_description FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'task_day': 'SELECT task_day FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'task_month': 'SELECT task_month FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'item_index': 'SELECT item_index FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC',
+                          'database_length_SchoolTasker': 'SELECT count(*) FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks',
+                          'database_length_Users': 'SELECT count(*) FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks',
+                          'task_year': 'SELECT task_year FROM ' + context.user_data[
+                              'CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime ASC'}
         title = variable_order[need_variable]
         cursor.execute(title)
         variable = cursor.fetchall()
-        if need_variable == "database_length_SchoolTasker" or need_variable == "database_length_Users":
-            variable = await get_clean_var(variable, "to_int", False, True)
+        if need_variable == 'database_length_SchoolTasker' or need_variable == 'database_length_Users':
+            variable = get_clean_var(variable, 'to_int', False, True)
             return int(variable)
         else:
-            variable = await get_clean_var(variable, "to_string", index, True)
+            try:
+                variable = get_clean_var(variable, 'to_string', index, True)
+            except TypeError:
+                variable = get_clean_var(variable, 'to_string', 0, True)
             return str(variable)
     else:
-        variable_select = {"item_name": "SELECT item_name FROM SchoolTasker WHERE item_index = ?",
-                           "group_number": "SELECT group_number FROM SchoolTasker WHERE item_index = ?",
-                           "task_description": "SELECT task_description FROM SchoolTasker WHERE item_index = ?",
-                           "task_day": "SELECT task_day FROM SchoolTasker WHERE item_index = ?",
-                           "task_month": "SELECT task_month FROM SchoolTasker WHERE item_index = ?",
-                           "task_year": "SELECT task_year FROM SchoolTasker WHERE item_index = ?"
+        variable_select = {'item_name': 'SELECT item_name FROM ' + context.user_data[
+            'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                           'group_number': 'SELECT group_number FROM ' + context.user_data[
+                               'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                           'task_description': 'SELECT task_description FROM ' + context.user_data[
+                               'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                           'task_day': 'SELECT task_day FROM ' + context.user_data[
+                               'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                           'task_month': 'SELECT task_month FROM ' + context.user_data[
+                               'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                           'task_year': 'SELECT task_year FROM ' + context.user_data[
+                               'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
                            }
         title = variable_select[need_variable]
         cursor.execute(title, (index,))
         variable = cursor.fetchone()
-        if need_variable == "item_name":
-            variable = await get_clean_var(variable, "to_string", False, True)
+        if need_variable == 'item_name':
+            variable = get_clean_var(variable, 'to_string', False, True)
             return str(variable)
-        elif need_variable == "task_description":
-            variable = await get_clean_var(variable, "to_string", False, False)
+        elif need_variable == 'task_description':
+            variable = get_clean_var(variable, 'to_string', False, False)
             return str(variable)
         else:
-            variable = await get_clean_var(variable, "to_int", False, True)
+            variable = get_clean_var(variable, 'to_int', False, True)
             return int(variable)
 
 
-async def logger_alert(user: list, status: str, formattered_index, is_order: bool):
-    global cursor
-    item_name = await get_var_from_database(formattered_index, "item_name", is_order)
-    task_description = await get_var_from_database(formattered_index, "task_description", is_order)
-    group_number = await get_var_from_database(formattered_index, "group_number", is_order)
-    task_day = await get_var_from_database(formattered_index, "task_day", is_order)
-    task_month = await get_var_from_database(formattered_index, "task_month", is_order)
-    status_dict = {"add": "added",
-                   "delete": "deleted",
-                   "change": "changed"}
-    title = "The "
+async def logger_alert(user: list, status: str, formattered_index, is_order: bool, context):
+    item_name = await get_var_from_database(formattered_index, 'item_name', is_order, context)
+    task_description = await get_var_from_database(formattered_index, 'task_description', is_order, context)
+    group_number = await get_var_from_database(formattered_index, 'group_number', is_order, context)
+    task_day = await get_var_from_database(formattered_index, 'task_day', is_order, context)
+    task_month = await get_var_from_database(formattered_index, 'task_month', is_order, context)
+    status_dict = {'add': 'added',
+                   'delete': 'deleted',
+                   'change': 'changed'}
+    title = 'The '
     if len(user) < 1:
-        title += "SchoolTasker has "
+        title += 'SchoolTasker was '
     else:
-        title += "user " + str(user[0]) + " (" + str(user[1]) + ")" + " has "
+        title += 'user ' + str(user[0]) + ' (' + str(user[1]) + ')' + ' was '
     status = status_dict[status]
-    status += " task"
+    status += ' task'
     title += status
-    title += ": На " + str(task_day) + "." + str(task_month) + " по " + str(item_name)
-    if item_name == "Английский язык" or item_name == "Информатика":
-        title += "(" + str(group_number) + "ая группа)"
-    title += ": " + str(task_description)
+    title += ': На ' + str(task_day) + '.' + str(task_month) + ' по ' + str(item_name)
+    check_groups = await _execute_query(
+        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+    check_groups = get_clean_var(check_groups, 'to_string', 0, True)
+    if int(check_groups) > 1:
+        title += '(' + str(group_number) + 'ая группа)'
+    title += ': ' + str(task_description)
     LOGGER.info(title)
 
 
-async def once_delete_task(school_tasks_screen):
-    await logger_alert([], "delete", 0, False)
-    cursor.execute("DELETE FROM SchoolTasker WHERE item_index = ?", (0,))
-    connection.commit()
-    school_tasks_screen.description = "<strong>На данный момент список заданий пуст!</strong>"
+async def once_delete_task(school_tasks_screen, context):
+    await logger_alert([], 'delete', 0, False, context)
+    await _execute_query('DELETE FROM SchoolTasker WHERE item_index = %s', (0,))
+    school_tasks_screen.description = '<strong>На данный момент список заданий пуст!</strong>'
 
 
-async def get_multipy_async(index, title):
-    Global.index_store = await get_var_from_database(None, "database_length_SchoolTasker", True)
-    task_day = await get_var_from_database(index, "task_day", True)
+async def get_multipy_async(index, title, context):
+    context.user_data.setdefault('RENDER_LAST_DAY', 0)
+    context.user_data.setdefault('RENDER_LAST_MONTH', 0)
+    context.user_data.setdefault('RENDER_LAST_YEAR', 0)
+    context.user_data.setdefault('RENDER_OPEN_DATE', True)
+    task_day = await get_var_from_database(index, 'task_day', True, context)
     check_day = int(task_day)
-    task_month = await get_var_from_database(index, "task_month", True)
+    task_month = await get_var_from_database(index, 'task_month', True, context)
     check_month = int(task_month)
-    task_year = await get_var_from_database(index, "task_year", True)
+    task_year = await get_var_from_database(index, 'task_year', True, context)
     check_year = int(task_year)
     task_month_int = int(task_month)
-    task_month = await recognise_month(task_month)
-    if Global.last_day == task_day and Global.last_month == task_month and Global.last_year == task_year:
-        if Global.open_date:
-            week_day = await get_week_day(task_year, task_month_int, int(task_day))
+    task_month = recognise_month(task_month)
+    if context.user_data['RENDER_LAST_DAY'] == task_day and context.user_data['RENDER_LAST_MONTH'] == task_month and \
+            context.user_data['RENDER_LAST_YEAR'] == task_year:
+        if context.user_data['RENDER_OPEN_DATE']:
+            week_day = get_week_day(task_year, task_month_int, int(task_day))
             if int(task_year) == datetime.now().year:
-                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                    task_month) + "</em>"
-                             + " :</strong>" + "\n\n")
+                task_time = ('<strong>На ' + '<em>' + week_day + ', ' + str(task_day) + ' ' + str(
+                    task_month) + '</em>'
+                             + ' :</strong>' + '\n\n')
             else:
-                task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                    task_month) + " " + str(task_year) + "го года" + "</em>"
-                             + " :</strong>" + "\n\n")
+                task_time = ('<strong>На ' + '<em>' + week_day + ', ' + str(task_day) + ' ' + str(
+                    task_month) + ' ' + str(task_year) + 'го года' + '</em>'
+                             + ' :</strong>' + '\n\n')
         else:
-            task_time = ""
+            task_time = ''
     else:
-        week_day = await get_week_day(task_year, task_month_int, int(task_day))
+        week_day = get_week_day(task_year, task_month_int, int(task_day))
         if int(task_year) == datetime.now().year:
-            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                task_month) + "</em>"
-                         + " :</strong>" + "\n\n")
+            task_time = ('<strong>На ' + '<em>' + week_day + ', ' + str(task_day) + ' ' + str(
+                task_month) + '</em>'
+                         + ' :</strong>' + '\n\n')
         else:
-            task_time = ("<strong>На " + "<em>" + week_day + ", " + str(task_day) + " " + str(
-                task_month) + " " + str(task_year) + "го года" + "</em>"
-                         + " :</strong>" + "\n\n")
-    Global.last_day = task_day
-    Global.last_month = task_month
-    Global.last_year = task_year
-    item_name = await get_var_from_database(index, "item_name", True)
-    a = "<strong>"
-    b = item_name
-    emoji = str(ITEM_EMOJI[b])
-    item_name = str(a) + str(emoji) + str(b)
-    if item_name == "<strong>🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "<strong>💻Информатика":
-        item_name += " ("
-        group_number = await get_var_from_database(index, "group_number", True)
-        item_name += str(group_number)
-        item_name += "ая группа)"
-    item_name += " : </strong>"
-    task_description = await get_var_from_database(index, "task_description", True)
-    task_description = await recognise_n_tag(task_description)
-    a = "<strong>"
-    b = task_description
-    c = "</strong>\n\n"
-    task_description = str(a) + str(b) + str(c)
-    current_title = task_time + item_name + task_description
+            task_time = ('<strong>На ' + '<em>' + week_day + ', ' + str(task_day) + ' ' + str(
+                task_month) + ' ' + str(task_year) + 'го года' + '</em>'
+                         + ' :</strong>' + '\n\n')
+    context.user_data['RENDER_LAST_DAY'] = task_day
+    context.user_data['RENDER_LAST_MONTH'] = task_month
+    context.user_data['RENDER_LAST_YEAR'] = task_year
+    item_name = await get_var_from_database(index, 'item_name', True, context)
+    html_start = '<strong>'
+    emoji = await _execute_query(
+        'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s', (item_name,))
+    emoji = get_clean_var(emoji, 'to_string', 0, True)
+    groups_check = await _execute_query(
+        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+    groups_check = get_clean_var(groups_check, 'to_string', 0, True)
+    item_name = html_start + str(emoji) + item_name
+    if int(groups_check) > 1:
+        item_name += ' ('
+        group_number = await get_var_from_database(index, 'group_number', True, context)
+        item_name += 'Группа ' + str(group_number) + ')'
+    task_description = await get_var_from_database(index, 'task_description', True, context)
+    task_description = recognise_n_tag(task_description)
+    html_end = '</strong>\n\n'
+    task_description = item_name + ': ' + task_description + html_end
+    current_title = task_time + task_description
     title += current_title
     return title, current_title, check_day, check_month, check_year
 
 
-async def get_button_title(index):
-    item_name = await get_var_from_database(index, "item_name", True)
-    emoji = ITEM_EMOJI[item_name]
+async def get_button_title(index, context):
+    item_name = await _execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    item_name = get_clean_var(item_name, 'to_string', index, True)
+    emoji = await _execute_query(
+        'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s', (item_name,))
+    emoji = get_clean_var(emoji, 'to_string', 0, True)
+    check = await _execute_query(
+        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (item_name,))
+    check = get_clean_var(check, 'to_string', False, True)
     item_name = str(emoji) + str(item_name)
-    if item_name == "🇬🇧󠁧󠁢󠁧󠁢Английский язык" or item_name == "💻Информатика":
-        group_number = await get_var_from_database(index, "group_number", True)
-        item_name += " (" + str(group_number) + "ая группа) "
-    task_description = await get_var_from_database(index, "task_description", True)
-    task_description = await recognise_n_tag(task_description)
+    if int(check) > 1:
+        group_number = await get_var_from_database(index, 'group_number', True, context)
+        item_name += ' (Группа ' + str(group_number) + ') '
+    task_description = await get_var_from_database(index, 'task_description', True, context)
+    task_description = recognise_n_tag(task_description)
     title = item_name
-    title += " : "
+    title += ' : '
     title += task_description
     return title
 
 
-async def get_notification_title(task_item, task_description, group_number, task_day, task_month_int, task_month,
+async def get_notification_title(context, task_description, task_day, task_month_int, task_month,
                                  task_year, stat):
-    status_dict = {"change": "изменено",
-                   "add": "добавлено"}
-    week_day = await get_week_day(task_year, task_month_int, int(task_day))
-    title = "На " + "<em>" + week_day + ", " + str(task_day)
+    status_dict = {'change': 'изменено',
+                   'add': 'добавлено'}
+    week_day = get_week_day(task_year, task_month_int, int(task_day))
+    title = 'В сообществе ' + context.user_data['CURRENT_CLASS_NAME'] + ' на ' + '<em>' + week_day + ', ' + str(
+        task_day)
     if str(task_year) == str(datetime.now().year):
-        add_month_txt = " " + str(task_month) + "</em>"
+        add_month_txt = ' ' + str(task_month) + '</em>'
     else:
-        add_month_txt = " " + str(task_month) + " " + str(task_year) + "го года" + "</em>"
+        add_month_txt = ' ' + str(task_month) + ' ' + str(task_year) + 'го года' + '</em>'
     title += str(add_month_txt)
     status = status_dict[stat]
-    title += " было " + status + " задание по "
-    add_task_txt = ITEM_DICT[task_item]
-    title += add_task_txt
-    if add_task_txt == "🇬🇧󠁧󠁢󠁧󠁢Английскому языку" or add_task_txt == "💻Информатике":
-        group_txt = " (" + str(group_number) + "ая " + "группа) "
-        title += group_txt
-    title += ": " + task_description + "</strong>"
-    return title
-
-
-async def main_get_payload(self, update, context, key_id: str, value: str):
+    title += ' было ' + status + ' задание по '
     try:
-        payload = loads(await self.get_payload(update, context))
-    except PayloadIsEmpty:
-        payload = context.user_data.get(key_id)
-    else:
-        context.user_data[key_id] = payload
-    context.user_data[value] = payload[value]
+        emoji = await _execute_query(
+            'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+        emoji = get_clean_var(emoji, 'to_string', 0, True)
+        rod_name = await _execute_query(
+            'SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+    except IndexError:
+        title = ''
+        status_dict = {'change': 'изменено',
+                       'add': 'добавлено'}
+        task_year = await _execute_query(
+            'SELECT task_year FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+        task_year = get_clean_var(task_year, 'to_string', 0, True)
+        task_month_int = await _execute_query(
+            'SELECT task_month FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+        task_month_int = get_clean_var(task_month_int, 'to_string', 0, True)
+        task_day = await _execute_query(
+            'SELECT task_day FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+        task_day = get_clean_var(task_day, 'to_string', 0, True)
+        week_day = get_week_day(int(task_year), int(task_month_int), int(task_day))
+        title = '<strong>В сообществе ' + context.user_data[
+            'CURRENT_CLASS_NAME'] + ' на ' + '<em>' + week_day + ', ' + str(
+            task_day)
+        if str(task_year) == str(datetime.now().year):
+            add_month_txt = ' ' + str(task_month) + '</em>'
+        else:
+            add_month_txt = ' ' + str(task_month) + ' ' + str(task_year) + 'го года' + '</em>'
+        title += str(add_month_txt)
+        status = status_dict[stat]
+        title += ' было ' + status + ' задание по '
+        main_name = await _execute_query(
+            'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+            (context.user_data['ADDING_TASK_INDEX'],))
+        main_name = get_clean_var(main_name, 'to_string', 0, True)
+        emoji = await _execute_query(
+            'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+            (main_name,))
+        emoji = get_clean_var(emoji, 'to_string', 0, True)
+        rod_name = await _execute_query(
+            'SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+            (main_name,))
+    rod_name = get_clean_var(rod_name, 'to_string', 0, True)
+    add_task_txt = emoji + rod_name
+    title += add_task_txt
+    check_group = await _execute_query(
+        'SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+        (context.user_data['ADDING_TASK_NAME'],))
+    check_group = get_clean_var(check_group, 'to_string', 0, True)
+    if int(check_group) > 1:
+        group_txt = ' (Группа ' + context.user_data['ADDING_TASK_GROUP_NUMBER'] + ')'
+        title += group_txt
+    title += ': ' + task_description + '</strong>'
+    return title
 
 
 async def check_task_status(context):
     check_db = str(context.user_data['db_check'])
-    cursor.execute('SELECT * FROM SchoolTasker')
-    real_db = cursor.fetchall()
-    real_db = await get_clean_var(real_db, "to_string", False, True)
+    real_db = await _execute_query('SELECT * FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    real_db = get_clean_var(real_db, 'to_string', 0, True)
     if check_db != real_db:
         return False
-    else:
-        return True
-
-
-async def is_informative_username(username):
-    username = username.strip()
-    if (not username or len(set(username)) == 1 or all(c in ' .-_/*!@#$%^:&()+=`~' for c in username) or len(username) <
-            3):
-        return False
-    else:
-        return True
-
-
-async def get_username(first_name, last_name, username):
-    data = [first_name, last_name, username]
-    for check in data:
-        if check and await is_informative_username(check):
-            return check.strip()
-    return "дорогой пользователь"
-
-
-async def generate_id():
-    new_id = token_urlsafe(15)
-    return new_id
+    return True
