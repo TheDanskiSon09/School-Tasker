@@ -5,7 +5,7 @@ from hammett.core.constants import SourceTypes
 from hammett.core.handlers import register_button_handler
 
 import backend
-from constants import BUTTON_BACK, WHICH_ITEM_WILL_BE_TASK, THERE_IS_NO_ITEMS_IN_COMMUNITY
+from captions import BUTTON_BACK, THERE_IS_NO_ITEMS_IN_COMMUNITY, WHICH_ITEM_WILL_BE_TASK
 from school_tasker.screens.base import base_screen
 from utils import get_clean_var, get_payload_safe
 
@@ -13,9 +13,7 @@ from utils import get_clean_var, get_payload_safe
 class SchoolTaskAddition(base_screen.BaseScreen):
 
     async def get_description(self, update, context):
-        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-        # db_length = backend.cursor.fetchall()
+        db_length = await backend.get_count_of_class_items(context)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             return WHICH_ITEM_WILL_BE_TASK
@@ -25,23 +23,14 @@ class SchoolTaskAddition(base_screen.BaseScreen):
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import school_task_management_main
         keyboard = []
-        db_length = await backend.execute_query('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-        # backend.cursor.execute('SELECT COUNT(*) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-        # db_length = backend.cursor.fetchall()
+        db_length = await backend.get_count_of_class_items(context)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
-            main_name_list = await backend.execute_query('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # backend.cursor.execute('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # main_name_list = backend.cursor.fetchall()
-            item_index_list = await backend.execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # backend.cursor.execute('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # item_index_list = backend.cursor.fetchall()
-            groups_list = await backend.execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # backend.cursor.execute('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # groups_list = backend.cursor.fetchall()
-            emoji_list = await backend.execute_query('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # backend.cursor.execute('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
-            # emoji_list = backend.cursor.fetchall()
+            main_name_list = await backend.get_main_name_of_class_item(context)
+
+            item_index_list = await backend.get_item_index_of_class_item(context)
+            groups_list = await backend.get_group_of_class_item(context)
+            emoji_list = await backend.get_emoji_of_class_item(context)
             for i in range(db_length):
                 main_name = get_clean_var(main_name_list, 'to_string', i - 1, True)
                 item_index = get_clean_var(item_index_list, 'to_string', i - 1, True)
@@ -58,13 +47,15 @@ class SchoolTaskAddition(base_screen.BaseScreen):
 
     @register_button_handler
     async def get_school_item(self, update, context):
-        from school_tasker.screens import school_task_addition_details, \
-            school_task_addition_group_number
+        from school_tasker.screens import (
+            school_task_addition_details,
+            school_task_addition_group_number,
+        )
         await get_payload_safe(self, update, context, 'add_task_item', 'ADDING_TASK_NAME')
         await get_payload_safe(self, update, context, 'add_task_item', 'ADDING_TASK_GROUPS')
         await get_payload_safe(self, update, context, 'add_task_item', 'ADDING_TASK_INDEX')
         if int(context.user_data['ADDING_TASK_GROUPS']) > 1:
             return await school_task_addition_group_number.SchoolTaskAdditionGroupNumber().move(update, context)
         else:
-            context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_TASK'
-            return await school_task_addition_details.SchoolTaskAdditionDetails().move(update, context)
+            # context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_TASK'
+            return await school_task_addition_details.SchoolTaskAdditionDetails().move_along_route(update, context)

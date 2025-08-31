@@ -7,15 +7,15 @@ from shutil import rmtree
 from bs4 import BeautifulSoup
 from hammett.conf import settings
 from hammett.core import Button
-from hammett.core.constants import SourceTypes, RenderConfig
+from hammett.core.constants import RenderConfig, SourceTypes
 from hammett.core.exceptions import ScreenDescriptionIsEmpty
 from hammett.core.handlers import register_button_handler
 from telegram.error import BadRequest
 
 import backend
-from constants import BUTTON_BACK, THERE_IS_NO_SCHOOL_TASKS_FOR_NOW
+from captions import BUTTON_BACK, THERE_IS_NO_SCHOOL_TASKS_FOR_NOW
 from school_tasker.screens.base import base_screen
-from utils import get_clean_var, save_html_markers, load_html_markers, get_payload_safe
+from utils import get_clean_var, get_payload_safe, load_html_markers, save_html_markers
 
 
 class SchoolTasks(base_screen.BaseScreen):
@@ -24,8 +24,8 @@ class SchoolTasks(base_screen.BaseScreen):
         from school_tasker.screens import main_menu
         new_config = RenderConfig()
         new_config.keyboard = []
-        database_length = await backend.get_var_from_database(None, "database_length_SchoolTasker", True, context)
-        title = str()
+        database_length = await backend.get_var_from_database(None, 'database_length_SchoolTasker', True, context)
+        title = ''
         if database_length < 1:
             if target_screen:
                 target_screen.description = THERE_IS_NO_SCHOOL_TASKS_FOR_NOW
@@ -34,7 +34,7 @@ class SchoolTasks(base_screen.BaseScreen):
                 return await target_screen().render(update, context, config=new_config)
         else:
             context.user_data['RENDER_OPEN_DATE'] = True
-            new_title = str()
+            new_title = ''
             tasks_to_delete = []
             for i in range(database_length):
                 title, current_title, check_day, check_month, check_year = await backend.get_multipy_async(i, title,
@@ -42,106 +42,74 @@ class SchoolTasks(base_screen.BaseScreen):
                 if check_year == datetime.now().year:
                     if check_month == datetime.now().month:
                         if check_day <= datetime.now().day:
-                            title = ""
-                            del_index = await backend.execute_query("SELECT item_index FROM " + context.user_data[
-                                'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                            # backend.cursor.execute("SELECT item_index FROM " + context.user_data[
-                            #     'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                            # del_index = backend.cursor.fetchall()
-                            del_index = get_clean_var(del_index, "to_string", i, True)
+                            title = ''
+                            del_index = await backend.get_item_index_from_community_tasks_order_by(context)
+                            del_index = get_clean_var(del_index, 'to_string', i, True)
                             if del_index not in tasks_to_delete:
                                 tasks_to_delete.append(del_index)
                     if check_month < datetime.now().month:
-                        title = ""
-                        del_index = await backend.execute_query("SELECT item_index FROM " + context.user_data[
-                            'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                        # backend.cursor.execute("SELECT item_index FROM " + context.user_data[
-                        #     'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                        # del_index = backend.cursor.fetchall()
-                        del_index = get_clean_var(del_index, "to_string", i, True)
+                        title = ''
+                        del_index = await backend.get_item_index_from_community_tasks_order_by(context)
+                        del_index = get_clean_var(del_index, 'to_string', i, True)
                         if del_index not in tasks_to_delete:
                             tasks_to_delete.append(del_index)
                 if check_year < datetime.now().year:
-                    title = ""
-                    del_index = await backend.execute_query("SELECT item_index FROM " + context.user_data[
-                        'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                    # backend.cursor.execute("SELECT item_index FROM " + context.user_data[
-                    #     'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                    # del_index = backend.cursor.fetchall()
-                    del_index = get_clean_var(del_index, "to_string", i, True)
+                    title = ''
+                    del_index = await backend.get_item_index_from_community_tasks_order_by(context)
+                    del_index = get_clean_var(del_index, 'to_string', i, True)
                     if del_index not in tasks_to_delete:
                         tasks_to_delete.append(del_index)
                 else:
                     new_title = title
                     context.user_data['RENDER_OPEN_DATE'] = False
-                    media_index = await backend.execute_query("SELECT item_index FROM " + context.user_data[
-                        'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                    # backend.cursor.execute("SELECT item_index FROM " + context.user_data[
-                    #     'CURRENT_CLASS_NAME'] + "_Tasks ORDER BY hypertime ASC")
-                    # media_index = backend.cursor.fetchall()
-                    media_index = get_clean_var(media_index, "to_string", i, True)
-                    if exists(str(settings.MEDIA_ROOT) + "/" + media_index) and media_index not in tasks_to_delete:
-                        media_button_title = str()
-                        media_item_name = await backend.execute_query('SELECT item_name FROM ' + context.user_data[
-                            'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s', (media_index,))
-                        # backend.cursor.execute('SELECT item_name FROM ' + context.user_data[
-                        #     'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s', (media_index,))
-                        # media_item_name = backend.cursor.fetchone()
+                    media_index = await backend.get_item_index_from_community_tasks_order_by(context)
+                    media_index = get_clean_var(media_index, 'to_string', i, True)
+                    if exists(str(settings.MEDIA_ROOT) + '/' + media_index) and media_index not in tasks_to_delete:
+                        media_button_title = ''
+                        media_item_name = await backend.get_item_name_from_community_tasks_by_index(context, media_index)
                         media_item_name = get_clean_var(media_item_name, 'to_string', 0, True)
-                        media_button_title += "🖼" + media_item_name
-                        groups_check = await backend.execute_query('SELECT groups_list FROM ' + context.user_data[
-                            'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-                                               (media_item_name,))
-                        # backend.cursor.execute('SELECT groups_list FROM ' + context.user_data[
-                        #     'CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-                        #                        (media_item_name,))
-                        # groups_check = backend.cursor.fetchone()
+                        media_button_title += '🖼' + media_item_name
+                        groups_check = await backend.get_group_from_community_tasks_by_name(context, media_item_name)
                         groups_check = get_clean_var(groups_check, 'to_string', 0, True)
                         if int(groups_check) > 1:
-                            media_group_number = await backend.execute_query('SELECT group_number FROM ' + context.user_data[
-                                'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-                                                   (media_index,))
-                            # backend.cursor.execute('SELECT group_number FROM ' + context.user_data[
-                            #     'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-                            #                        (media_index,))
-                            # media_group_number = backend.cursor.fetchone()
+                            media_group_number = await backend.get_group_number_from_community_tasks_by_index(context, media_index)
                             media_group_number = get_clean_var(media_group_number, 'to_string', False,
                                                                True)
-                            media_button_title += '(' + media_group_number + "я группа)"
+                            media_button_title += '(' + media_group_number + 'я группа)'
                         media_button_title += ': '
-                        media_task_description = await backend.execute_query('SELECT task_description FROM ' + context.user_data[
-                            'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-                                               (media_index,))
+                        media_task_description = await backend.get_task_description_from_community_tasks_by_index(context, media_index)
+                        # media_task_description = await backend._execute_query('SELECT task_description FROM ' + context.user_data[
+                        #     'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                        #                        (media_index,))
                         # backend.cursor.execute('SELECT task_description FROM ' + context.user_data[
                         #     'CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
                         #                        (media_index,))
                         # media_task_description = backend.cursor.fetchone()
                         media_task_description = get_clean_var(media_task_description, 'to_string',
-                                                               0, False)
+                                                               0, True)
                         media_button_title += media_task_description
                         new_config.keyboard.append([Button(media_button_title, self._goto_task_media,
                                                            source_type=SourceTypes.HANDLER_SOURCE_TYPE,
-                                                           payload=dumps({"MEDIA_INDEX_GOTO": media_index,
+                                                           payload=dumps({'MEDIA_INDEX_GOTO': media_index,
                                                                           'MEDIA_TITLE': current_title}))])
                 if not new_title:
                     if target_screen:
                         target_screen.description = THERE_IS_NO_SCHOOL_TASKS_FOR_NOW
-                else:
-                    if target_screen:
-                        target_screen.description = new_title
+                elif target_screen:
+                    target_screen.description = new_title
             for task_id in tasks_to_delete:
-                await backend.logger_alert([], "delete", task_id, False, context)
-                await backend.execute_query('DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-                    (task_id,))
+                await backend.logger_alert([], 'delete', task_id, False, context)
+                await backend.delete_task_from_community_tasks_by_index(context, task_id)
+                # await backend._execute_query('DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
+                #     (task_id,))
                 # backend.cursor.execute(
                 #     'DELETE FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
                 #     (task_id,))
                 # backend.connection.commit()
                 if exists(str(settings.MEDIA_ROOT) + '/' + task_id):
                     rmtree(str(settings.MEDIA_ROOT) + '/' + task_id)
-            else:
-                if target_screen:
-                    target_screen.description = new_title
+            if target_screen:
+                target_screen.description = new_title
             if database_length < 1:
                 if target_screen:
                     target_screen.description = THERE_IS_NO_SCHOOL_TASKS_FOR_NOW
@@ -160,11 +128,11 @@ class SchoolTasks(base_screen.BaseScreen):
                     for x in range(0, len(target_screen.description), settings.MAX_CAPTION_LENGTH):
                         current_description = target_screen.description[x:x + settings.MAX_CAPTION_LENGTH]
                         save_markers = save_html_markers(current_description)
-                        soup = BeautifulSoup(save_markers, "html.parser")
+                        soup = BeautifulSoup(save_markers, 'html.parser')
                         soup.prettify()
                         current_description = str(soup)
                         current_description = load_html_markers(current_description)
-                        current_description = "<strong>" + current_description + '</strong>'
+                        current_description = '<strong>' + current_description + '</strong>'
                         if x + settings.MAX_CAPTION_LENGTH >= len(target_screen.description):
                             new_config.description = current_description
                             await target_screen().send(context, config=new_config)
@@ -174,10 +142,10 @@ class SchoolTasks(base_screen.BaseScreen):
     @register_button_handler
     async def _goto_task_media(self, update, context):
         from school_tasker.screens import static_task_media
-        await get_payload_safe(self, update, context, "task_media_index", 'MEDIA_INDEX_GOTO')
-        await get_payload_safe(self, update, context, "task_media_index", 'MEDIA_TITLE')
+        await get_payload_safe(self, update, context, 'task_media_index', 'MEDIA_INDEX_GOTO')
+        await get_payload_safe(self, update, context, 'task_media_index', 'MEDIA_TITLE')
         try:
-            show_images = listdir('media/' + context.user_data['MEDIA_INDEX_GOTO'] + "/")
+            show_images = listdir('media/' + context.user_data['MEDIA_INDEX_GOTO'] + '/')
             if len(show_images) > 1:
                 from school_tasker.screens import carousel_task_media
                 new_task_media = carousel_task_media.CarouselTaskMedia()
@@ -196,8 +164,8 @@ class SchoolTasks(base_screen.BaseScreen):
                 new_config.keyboard = [
                     [
                         Button(BUTTON_BACK, self._static_check_tasks,
-                               source_type=SourceTypes.HANDLER_SOURCE_TYPE)
-                    ]
+                               source_type=SourceTypes.HANDLER_SOURCE_TYPE),
+                    ],
                 ]
                 try:
                     return await new_task_media.render(update, context, config=new_config)
@@ -205,11 +173,11 @@ class SchoolTasks(base_screen.BaseScreen):
                     for x in range(0, len(new_task_media.description), settings.MAX_CAPTION_LENGTH):
                         current_description = new_task_media.description[x:x + settings.MAX_CAPTION_LENGTH]
                         save_markers = save_html_markers(current_description)
-                        soup = BeautifulSoup(save_markers, "html.parser")
+                        soup = BeautifulSoup(save_markers, 'html.parser')
                         soup.prettify()
                         current_description = str(soup)
                         current_description = load_html_markers(current_description)
-                        current_description = "<strong>" + current_description + '</strong>'
+                        current_description = '<strong>' + current_description + '</strong>'
                         if x + settings.MAX_CAPTION_LENGTH >= len(new_task_media.description):
                             new_config.description = current_description
                             return await new_task_media.send(context, config=new_config)
@@ -222,11 +190,11 @@ class SchoolTasks(base_screen.BaseScreen):
                     for x in range(0, len(new_task_media.description), settings.MAX_CAPTION_LENGTH):
                         current_description = new_task_media.description[x:x + settings.MAX_CAPTION_LENGTH]
                         save_markers = save_html_markers(current_description)
-                        soup = BeautifulSoup(save_markers, "html.parser")
+                        soup = BeautifulSoup(save_markers, 'html.parser')
                         soup.prettify()
                         current_description = str(soup)
                         current_description = load_html_markers(current_description)
-                        current_description = "<strong>" + current_description + '</strong>'
+                        current_description = '<strong>' + current_description + '</strong>'
                         if x + settings.MAX_CAPTION_LENGTH >= len(new_task_media.description):
                             new_config.description = current_description
                             await new_task_media.send(context, config=new_config)

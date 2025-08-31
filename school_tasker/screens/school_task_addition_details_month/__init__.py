@@ -2,15 +2,21 @@ from datetime import datetime
 from json import dumps
 
 from hammett.core import Button
-from hammett.core.constants import SourceTypes
+from hammett.core.constants import SourceTypes, DEFAULT_STATE
 from hammett.core.handlers import register_button_handler
+from hammett.core.mixins import RouteMixin
 
-from constants import MONTHS_DICT, BUTTON_BACK, ON_WHICH_MONTH_WILL_BE_TASK
+from captions import BUTTON_BACK, ON_WHICH_MONTH_WILL_BE_TASK
+from constants import MONTHS_DICT
 from school_tasker.screens.base import base_screen
+from states import ADDING_TASK
 from utils import get_payload_safe
 
 
-class SchoolTaskAdditionDetailsMonth(base_screen.BaseScreen):
+class SchoolTaskAdditionDetailsMonth(base_screen.BaseScreen, RouteMixin):
+    routes = (
+        ({ADDING_TASK}, DEFAULT_STATE),
+    )
     description = ON_WHICH_MONTH_WILL_BE_TASK
 
     async def add_default_keyboard(self, update, context):

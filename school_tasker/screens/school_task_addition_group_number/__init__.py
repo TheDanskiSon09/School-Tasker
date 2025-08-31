@@ -4,7 +4,7 @@ from hammett.core import Button
 from hammett.core.constants import SourceTypes
 from hammett.core.handlers import register_button_handler
 
-from constants import BUTTON_BACK, WHICH_GROUP_WILL_BE_TASK
+from captions import BUTTON_BACK, WHICH_GROUP_WILL_BE_TASK
 from school_tasker.screens.base import base_screen
 from utils import get_payload_safe
 

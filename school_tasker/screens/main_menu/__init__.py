@@ -1,60 +1,51 @@
+import logging
+from random import randint
+
+from hammett.core import Button
+from hammett.core.constants import RenderConfig, SourceTypes
 from hammett.core.handlers import register_button_handler
 from hammett.core.mixins import StartMixin
-from mysql.connector import IntegrityError
 
-from backend import *
-from constants import FIRST_GREET, ENTER_TO_TASKS, MAKE_CHANGES_IN_TASKS, COMMUNITIES, OPTIONS, \
-    WHATS_NEW_TODAY, MORE_ABOUT_SCHOOL_TASKER, MAKE_CHANGES_IN_COMMUNITY
+import backend
+from captions import (
+    COMMUNITIES,
+    ENTER_TO_TASKS,
+    MAKE_CHANGES_IN_COMMUNITY,
+    MAKE_CHANGES_IN_TASKS,
+    MORE_ABOUT_SCHOOL_TASKER,
+    OPTIONS,
+    WHATS_NEW_TODAY,
+)
+from constants import FIRST_GREET
 from school_tasker.screens.base import base_screen
-from utils import get_username, get_greet, get_clean_var
+from utils import get_clean_var, get_greet, get_username
 
-
-LOGGER = getLogger('hammett')
+LOGGER = logging.getLogger('hammett')
 
 
 class MainMenu(StartMixin, base_screen.BaseScreen):
 
     async def get_config(self, update, context, **_kwargs):
-        from school_tasker.screens import communitites_main
-        from school_tasker.screens import options
-        from school_tasker.screens import social_media
-        from school_tasker.screens import whats_new
+        from school_tasker.screens import communitites_main, options, social_media, whats_new
         user_id = update.effective_user.id
         config = RenderConfig()
         user_name = get_username(update.effective_user.first_name, update.effective_user.last_name,
                                  update.effective_user.username)
-        try:
-            await execute_query('INSERT INTO Users (send_notification, id, name) '
-                'VALUES'
-                '(%s,%s,%s)', (1, str(user_id), user_name,))
-            config.description = FIRST_GREET[randint(0, 2)]
-        except IntegrityError or AttributeError:
-            await execute_query("UPDATE Users SET name = %s WHERE id = %s", (user_name, user_id,))
-            config.description = get_greet(user_name)
+        config.description = await backend.add_or_update_user(user_id, user_name, FIRST_GREET[randint(0, 2)],
+                                                              get_greet(user_name))
         config.keyboard = []
-        db_length = await execute_query('SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s', (update.effective_user.id,))
-        # cursor.execute('SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s', (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+        db_length = await backend.get_count_of_user_communities_by_user_id(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             config.keyboard.append([Button(ENTER_TO_TASKS, self.check_class_name_watch,
-                                           source_type=SourceTypes.HANDLER_SOURCE_TYPE), ])
-        db_length = await execute_query("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-            (update.effective_user.id,))
-        # cursor.execute(
-        #     "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-        #     (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+                                           source_type=SourceTypes.HANDLER_SOURCE_TYPE) ])
+        db_length = await backend.get_count_of_user_communities_where_user_is_host_or_admin(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             config.keyboard.append([
                 Button(MAKE_CHANGES_IN_TASKS, self.check_class_name_tasks,
                        source_type=SourceTypes.HANDLER_SOURCE_TYPE)])
-        db_length = await execute_query("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
-                       (update.effective_user.id,))
-        # cursor.execute("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
-        #                (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+        db_length = await backend.get_count_of_user_communities_where_user_is_host_or_admin(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             config.keyboard.append([
@@ -73,18 +64,11 @@ class MainMenu(StartMixin, base_screen.BaseScreen):
 
     @register_button_handler
     async def check_class_name_watch(self, update, context):
-        from school_tasker.screens import community_selection_to_watch
-        from school_tasker.screens import school_tasks
-        db_length = await execute_query("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s", (update.effective_user.id,))
-        # cursor.execute("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s", (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+        from school_tasker.screens import community_selection_to_watch, school_tasks
+        db_length = await backend.get_count_of_user_communities_by_id(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length == 1:
-            context.user_data['CURRENT_CLASS_NAME'] = await execute_query('SELECT class_name FROM UserCommunities WHERE user_id = %s',
-                           (update.effective_user.id,))
-            # cursor.execute('SELECT class_name FROM UserCommunities WHERE user_id = %s',
-            #                (update.effective_user.id,))
-            # context.user_data['CURRENT_CLASS_NAME'] = cursor.fetchall()
+            context.user_data['CURRENT_CLASS_NAME'] = await backend.get_class_name_from_user_community_by_id(update)
             context.user_data['CURRENT_CLASS_NAME'] = \
                 get_clean_var(context.user_data['CURRENT_CLASS_NAME'], 'to_string', 0, True)
             st_screen = school_tasks.SchoolTasks()
@@ -94,22 +78,11 @@ class MainMenu(StartMixin, base_screen.BaseScreen):
 
     @register_button_handler
     async def check_class_name_tasks(self, update, context):
-        from school_tasker.screens import community_selection_to_tasks
-        from school_tasker.screens import school_task_management_main
-        db_length = await execute_query("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-            (update.effective_user.id,))
-        # cursor.execute(
-        #     "SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-        #     (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+        from school_tasker.screens import community_selection_to_tasks, school_task_management_main
+        db_length = await backend.get_count_of_user_communities_where_user_is_host_or_admin(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length == 1:
-            context.user_data['CURRENT_CLASS_NAME'] = await execute_query("SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-                (update.effective_user.id,))
-            # cursor.execute(
-            #     "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class IN ('ADMIN', 'HOST')",
-            #     (update.effective_user.id,))
-            # context.user_data['CURRENT_CLASS_NAME'] = cursor.fetchall()
+            context.user_data['CURRENT_CLASS_NAME'] = await backend.get_class_name_of_user_communities_where_user_is_host_or_admin(update)
             context.user_data['CURRENT_CLASS_NAME'] = \
                 get_clean_var(context.user_data['CURRENT_CLASS_NAME'], 'to_string', 0, True)
             return await school_task_management_main.SchoolTaskManagementMain().move(update, context)
@@ -118,21 +91,11 @@ class MainMenu(StartMixin, base_screen.BaseScreen):
 
     @register_button_handler
     async def check_class_name_manage(self, update, context):
-        from school_tasker.screens import community_management_main
-        from school_tasker.screens import community_selection_to_manage
-        db_length = await execute_query("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
-                       (update.effective_user.id,))
-        # cursor.execute("SELECT COUNT(*) FROM UserCommunities WHERE user_id = %s AND user_role_in_class = 'HOST'",
-        #                (update.effective_user.id,))
-        # db_length = cursor.fetchone()
+        from school_tasker.screens import community_management_main, community_selection_to_manage
+        db_length = await backend.get_count_of_user_communities_by_user_id_where_user_is_host(update)
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length == 1:
-            context.user_data['CURRENT_CLASS_NAME'] = await execute_query("SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class  = 'HOST'",
-                (update.effective_user.id,))
-            # cursor.execute(
-            #     "SELECT class_name FROM UserCommunities WHERE user_id = %s AND user_role_in_class  = 'HOST'",
-            #     (update.effective_user.id,))
-            # context.user_data['CURRENT_CLASS_NAME'] = cursor.fetchall()
+            context.user_data['CURRENT_CLASS_NAME'] = await backend.get_class_name_of_user_communities_by_user_id_where_user_is_host(update)
             context.user_data['CURRENT_CLASS_NAME'] = \
                 get_clean_var(context.user_data['CURRENT_CLASS_NAME'], 'to_string', 0, True)
             return await community_management_main.CommunityManagementMain().move(update, context)
@@ -145,12 +108,10 @@ class MainMenu(StartMixin, base_screen.BaseScreen):
         await school_tasks.SchoolTasks().check_tasks(update, context, school_tasks.SchoolTasks)
 
     async def start(self, update, context):
-        """Replies to the /start command. """
+        """Replies to the /start command."""
         try:
             user = update.message.from_user
         except AttributeError:
-            # When the start handler is invoked through editing
-            # the message with the /start command.
             user = update.edited_message.from_user
         user_name = get_username(user.first_name, user.last_name, user.username)
         LOGGER.info('The user %s (%s) was entered to School Tasker', user_name, user.id)

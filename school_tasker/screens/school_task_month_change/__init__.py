@@ -6,9 +6,15 @@ from hammett.core.constants import SourceTypes
 from hammett.core.handlers import register_button_handler
 
 import backend
-from constants import MONTHS_DICT, BUTTON_BACK, ON_WHICH_MONTH_WILL_BE_TASK, I_CANT_MAKE_YOUR_REQUEST, MAKE_ANOTHER_TRY
+from captions import (
+    BUTTON_BACK,
+    I_CANT_MAKE_YOUR_REQUEST,
+    MAKE_ANOTHER_TRY,
+    ON_WHICH_MONTH_WILL_BE_TASK,
+)
+from constants import MONTHS_DICT
 from school_tasker.screens.base import base_screen
-from utils import get_payload_safe, get_clean_var
+from utils import get_clean_var, get_payload_safe
 
 
 class SchoolTaskMonthChange(base_screen.BaseScreen):
@@ -37,34 +43,18 @@ class SchoolTaskMonthChange(base_screen.BaseScreen):
                                                   I_CANT_MAKE_YOUR_REQUEST,
                                                   [
                                                       [Button(MAKE_ANOTHER_TRY, school_task_management_main.SchoolTaskManagementMain,
-                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)
+                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                        ],
                                                       [Button(BUTTON_BACK, school_task_management_main.SchoolTaskManagementMain,
-                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE)
+                                                              source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                        ]])
         else:
-            await backend.execute_query('UPDATE ' + context.user_data[
-                    'CURRENT_CLASS_NAME'] + '_Tasks SET task_month = %s WHERE item_index = %s',
-                (context.user_data['ADDING_TASK_TASK_MONTH'], context.user_data['ADDING_TASK_INDEX'],))
-            # backend.cursor.execute(
-            #     'UPDATE ' + context.user_data[
-            #         'CURRENT_CLASS_NAME'] + '_Tasks SET task_month = %s WHERE item_index = %s',
-            #     (context.user_data['ADDING_TASK_TASK_MONTH'], context.user_data['ADDING_TASK_INDEX'],))
-            # backend.connection.commit()
-            item_name = await backend.execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-                (context.user_data['ADDING_TASK_INDEX'],))
-            # backend.cursor.execute(
-            #     'SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
-            #     (context.user_data['ADDING_TASK_INDEX'],))
-            # item_name = backend.cursor.fetchall()
+            await backend.update_community_tasks_set_task_month_by_index(context)
+            item_name = await backend.get_item_name_from_community_task_by_index(context)
             item_name = get_clean_var(item_name, 'to_string', 0, True)
-            context.user_data['ADDING_TASK_INDEX'] = await backend.execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-                (item_name,))
-            # backend.cursor.execute(
-            #     'SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
-            #     (item_name,))
-            # context.user_data['ADDING_TASK_INDEX'] = backend.cursor.fetchall()
+            context.user_data['ADDING_TASK_NAME'] = item_name
+            context.user_data['ADDING_TASK_INDEX'] = await backend.get_item_index_from_community_items_by_index(context, item_name)
             context.user_data['ADDING_TASK_INDEX'] = get_clean_var(context.user_data['ADDING_TASK_INDEX'],
                                                                     'to_string', 0, True)
             return await backend.send_update_notification(update, context, 'change', context.user_data['ADDING_TASK_INDEX'],
-                                                  True)
+                                                  True, 'change')
