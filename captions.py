@@ -102,7 +102,7 @@ YOU_SUCCESSFULLY_JOINED_COMMUNITY = '<strong>✅ Вы успешно зашли 
 
 JOIN_TO_MORE_COMMUNITIES = '⬅ Ещё присоединиться'
 
-TO_THE_COMMUNITIES_SCREEN = 'В экран сообществ'
+TO_THE_COMMUNITIES_SCREEN = '⬅ В экран сообществ'
 
 ON_WHICH_DAY_WILL_BE_TASK = '<strong>На какой день дано задание?</strong>'
 

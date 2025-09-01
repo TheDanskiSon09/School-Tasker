@@ -492,6 +492,10 @@ async def get_username_by_id(user_id):
     return await _execute_query('SELECT name FROM Users WHERE id = %s', (user_id,))
 
 
+async def get_community_passwords():
+    return await _execute_query('SELECT password FROM Community')
+
+
 async def show_notification_screen(update, context, translation_type: str, description, keyboard):
     from school_tasker.screens.screen_notification import ScreenNotification
     new_config = RenderConfig()
@@ -650,7 +654,7 @@ async def add_task_school(update, context, task_item, task_description, group_nu
 
 async def convert_to_webp(input_path: str, output_path: str):
     img = Image.open(input_path).convert('RGB')
-    img.save(output_path, 'webp', optimize=True , quality=80)
+    img.save(output_path, 'webp', optimize=True, quality=80)
 
 
 async def get_var_from_database(index, need_variable, order: bool, context):
