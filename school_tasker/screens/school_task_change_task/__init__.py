@@ -36,6 +36,7 @@ class SchoolTaskChangeTask(base_screen.BaseScreen, RouteMixin):
 
     @register_typing_handler
     async def handle_new_task_text(self, update, context):
+        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
         """"""
         try:
             if context.user_data['ADDING_TASK_TASK_DESCRIPTION']:
@@ -47,7 +48,6 @@ class SchoolTaskChangeTask(base_screen.BaseScreen, RouteMixin):
         item_name = await backend.get_item_name_from_tasks_by_item_index(context)
         item_name = get_clean_var(item_name, 'to_string', 0, True)
         context.user_data['ADDING_TASK_NAME'] = item_name
-        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
         return await backend.send_update_notification(update, context, 'change',
                                                       context.user_data['ADDING_TASK_INDEX'],
                                                       True, 'change')

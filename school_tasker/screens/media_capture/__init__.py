@@ -58,7 +58,7 @@ class MediaCapture(base_screen.BaseScreen):
 
     @register_button_handler
     async def go_to_task_screen(self, update, context):
-        from school_tasker.screens.school_task_management_main import school_task_addition
+        from school_tasker.screens import school_task_addition
         context.user_data['MEDIA_ADD'] = []
         return await school_task_addition.SchoolTaskAddition().move(update, context)
 
@@ -152,7 +152,6 @@ class MediaCapture(base_screen.BaseScreen):
                                context.user_data['ADDING_TASK_TASK_MONTH'],
                                context.user_data['ADDING_TASK_TASK_YEAR']],
                               'add', context.user_data['ADD_TASK_ITEM_INDEX'], update, context)
-        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
 
     async def add_default_keyboard(self, update, context):
         from school_tasker.screens import school_task_addition
