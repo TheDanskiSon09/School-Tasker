@@ -44,19 +44,16 @@ class SchoolItemManagement(base_screen.BaseScreen):
     @register_button_handler
     async def change_name(self, update, context):
         from school_tasker.screens import school_item_name_change
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGING_ITEM_NAME'
         return await school_item_name_change.SchoolItemNameChange().move_along_route(update, context)
 
     @register_button_handler
     async def change_rod_name(self, update, context):
         from school_tasker.screens import school_item_rod_name_change
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGING_ITEM_ROD_NAME'
         return await school_item_rod_name_change.SchoolItemRodNameChange().move_along_route(update, context)
 
     @register_button_handler
     async def change_group_number(self, update, context):
         from school_tasker.screens import school_item_groups_change
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGING_ITEM_GROUPS'
         return await school_item_groups_change.SchoolItemGroupsChange().move_along_route(update, context)
 
     @register_button_handler

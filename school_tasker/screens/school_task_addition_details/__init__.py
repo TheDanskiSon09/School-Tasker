@@ -45,6 +45,7 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen, RouteMixin):
         ({DEFAULT_STATE}, ADDING_TASK),
     )
     description = ENTER_TEXT_OF_TASK
+    back_screen = None
 
     async def add_default_keyboard(self, update, context):
         context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_TASK'
@@ -57,16 +58,16 @@ class SchoolTaskAdditionDetails(base_screen.BaseScreen, RouteMixin):
 
     @register_button_handler
     async def return_back(self, update, context):
-        from school_tasker.screens import school_task_addition, school_task_change_base
-        if context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_MONTH' or context.user_data[
-            'CURRENT_TYPING_ACTION'] == 'CHANGING_TASK_DESCRIPTION' or context.user_data[
-            'CURRENT_TYPING_ACTION'] == 'CHANGING_GROUP_NUMBER' or context.user_data[
-            'CURRENT_TYPING_ACTION'] == 'CHANGING_DAY':
-            context.user_data['CURRENT_TYPING_ACTION'] = ''
-            return await school_task_change_base.SchoolTaskChangeBase().move(update, context)
-        else:
-            context.user_data['CURRENT_TYPING_ACTION'] = ''
-            return await school_task_addition.SchoolTaskAddition().move(update, context)
+        return await self.back_screen.move(update, context)
+        # if context.user_data['CURRENT_TYPING_ACTION'] == 'CHANGING_MONTH' or context.user_data[
+        #     'CURRENT_TYPING_ACTION'] == 'CHANGING_TASK_DESCRIPTION' or context.user_data[
+        #     'CURRENT_TYPING_ACTION'] == 'CHANGING_GROUP_NUMBER' or context.user_data[
+        #     'CURRENT_TYPING_ACTION'] == 'CHANGING_DAY':
+        #     context.user_data['CURRENT_TYPING_ACTION'] = ''
+        #     return await school_task_change_base.SchoolTaskChangeBase().move(update, context)
+        # else:
+        #     context.user_data['CURRENT_TYPING_ACTION'] = ''
+        #     return await school_task_addition.SchoolTaskAddition().move(update, context)
 
     @register_typing_handler
     async def handle_message(self, update, context):

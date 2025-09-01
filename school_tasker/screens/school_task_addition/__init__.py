@@ -27,7 +27,6 @@ class SchoolTaskAddition(base_screen.BaseScreen):
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             main_name_list = await backend.get_main_name_of_class_item(context)
-
             item_index_list = await backend.get_item_index_of_class_item(context)
             groups_list = await backend.get_group_of_class_item(context)
             emoji_list = await backend.get_emoji_of_class_item(context)
@@ -57,5 +56,5 @@ class SchoolTaskAddition(base_screen.BaseScreen):
         if int(context.user_data['ADDING_TASK_GROUPS']) > 1:
             return await school_task_addition_group_number.SchoolTaskAdditionGroupNumber().move(update, context)
         else:
-            # context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_TASK'
+            school_task_addition_details.SchoolTaskAdditionDetails.back_screen = SchoolTaskAddition()
             return await school_task_addition_details.SchoolTaskAdditionDetails().move_along_route(update, context)

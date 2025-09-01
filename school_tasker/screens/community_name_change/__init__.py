@@ -31,7 +31,6 @@ class CommunityNameChange(base_screen.BaseScreen, RouteMixin):
     @register_button_handler
     async def go_back(self, update, context):
         from school_tasker.screens import community_management_main
-        context.user_data['CURRENT_TYPING_ACTION'] = ''
         return await community_management_main.CommunityManagementMain().move(update, context)
 
     @register_typing_handler
@@ -43,7 +42,6 @@ class CommunityNameChange(base_screen.BaseScreen, RouteMixin):
             await backend.rename_items_table(context, new_community_name)
             await backend.rename_tasks_table(context, new_community_name)
         context.user_data['CURRENT_CLASS_NAME'] = new_community_name
-        context.user_data['CURRENT_TYPING_ACTION'] = ''
         return await backend.show_notification_screen(update, context, 'send',
                                                       NAME_OF_YOUR_COMMUNITY_WAS_SUCCESSFULLY_CHANGED,
                                                       [
@@ -61,5 +59,4 @@ class CommunityNameChange(base_screen.BaseScreen, RouteMixin):
 
     @register_button_handler
     async def go_change_name(self, update, context):
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGING_CLASS_NAME'
         return await CommunityNameChange().move_along_route(update, context)

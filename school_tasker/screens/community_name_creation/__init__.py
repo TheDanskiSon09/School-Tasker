@@ -27,7 +27,6 @@ class CommunityNameCreation(base_screen.BaseScreen, RouteMixin):
     @register_button_handler
     async def go_back(self, update, context):
         from school_tasker.screens import communitites_main
-        context.user_data['CURRENT_TYPING_ACTION'] = ''
         return await communitites_main.CommunitiesMain().move(update, context)
 
 
@@ -35,5 +34,4 @@ class CommunityNameCreation(base_screen.BaseScreen, RouteMixin):
     async def handle_message(self, update, context):
         context.user_data['CURRENT_CLASS_NAME'] = update.message.text
         context.user_data['CURRENT_CLASS_NAME'] = context.user_data['CURRENT_CLASS_NAME'].replace(' ', '')
-        context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_PASSWORD_TO_CLASS'
         return await community_password_creation.CommunityPasswordCreation().jump_along_route(update, context)

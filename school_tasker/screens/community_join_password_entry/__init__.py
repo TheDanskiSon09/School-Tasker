@@ -54,4 +54,4 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
                                                               ],
                                                           ])
         else:
-            return await CommunityJoinPasswordEntry().jump(update, context)
+            return await CommunityJoinPasswordEntry().jump_along_route(update, context)

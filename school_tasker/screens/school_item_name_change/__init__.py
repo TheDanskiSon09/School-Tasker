@@ -21,7 +21,6 @@ class SchoolItemNameChange(school_item_change_base_class.SchoolItemChangeBaseCla
     async def handle_message(self, update, context):
         await backend.update_items_set_main_name_by_main_name(context, update)
         await backend.update_tasks_set_item_name_by_item_name(context, update)
-        context.user_data['CURRENT_TYPING_ACTION'] = ''
         return await backend.show_notification_screen(update, context, 'send',
                                                           ITEM_NAME_WAS_SUCCESSFULLY_CHANGED, [
                                                               [

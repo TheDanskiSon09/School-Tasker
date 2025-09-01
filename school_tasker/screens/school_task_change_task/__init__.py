@@ -20,7 +20,6 @@ class SchoolTaskChangeTask(base_screen.BaseScreen, RouteMixin):
     task_description = ''
 
     async def add_default_keyboard(self, update, context):
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGING_TASK_DESCRIPTION'
         await get_payload_safe(self, update, context, 'change_task_description', 'deletion_index')
         return [
             [

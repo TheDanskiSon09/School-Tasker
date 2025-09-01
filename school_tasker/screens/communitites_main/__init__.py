@@ -28,6 +28,5 @@ class CommunitiesMain(base_screen.BaseScreen):
 
     @register_button_handler
     async def go_create_community(self, update, context):
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CREATING_CLASS'
         from school_tasker.screens import community_name_creation
         return await community_name_creation.CommunityNameCreation().move_along_route(update, context)

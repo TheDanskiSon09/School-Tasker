@@ -56,8 +56,8 @@ class OldTaskAdditionAlert(base_screen.BaseScreen):
 
     @register_button_handler
     async def change_task_time(self, update, context):
-        from school_tasker.screens import school_task_addition_details
-        context.user_data['CURRENT_TYPING_ACTION'] = 'CHANGE_TASK_TIME'
+        from school_tasker.screens import school_task_addition_details, school_task_change_base
+        school_task_addition_details.SchoolTaskAdditionDetails.back_screen = school_task_change_base.SchoolTaskChangeBase()
         return await school_task_addition_details.SchoolTaskAdditionDetails().move(update, context)
 
     @register_button_handler

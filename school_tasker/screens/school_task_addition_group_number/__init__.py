@@ -28,7 +28,8 @@ class SchoolTaskAdditionGroupNumber(base_screen.BaseScreen):
         from school_tasker.screens import school_task_addition_details
         await get_payload_safe(self, update, _context, 'add_task_group_number', 'ADDING_TASK_GROUP_NUMBER')
         _context.user_data['CURRENT_TYPING_ACTION'] = 'ADDING_TASK'
-        return await school_task_addition_details.SchoolTaskAdditionDetails().move(update, _context)
+        school_task_addition_details.SchoolTaskAdditionDetails.back_screen = SchoolTaskAdditionGroupNumber()
+        return await school_task_addition_details.SchoolTaskAdditionDetails().move_along_route(update, _context)
 
     @register_button_handler
     async def return_back(self, update, _context):
