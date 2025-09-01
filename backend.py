@@ -634,6 +634,7 @@ async def add_task_school(update, context, task_item, task_description, group_nu
         context.user_data['IS_IN_MEDIA_SCREEN'] = False
         await send_update_notification(update, context, 'add', context.user_data['ADD_TASK_ITEM_INDEX'],
                                        False, 'add')
+        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
         return await show_notification_screen(update, context, 'send', '✅<strong>Задание успешно добавлено!</strong>',
                                               [
                                                   [Button('⬅️ В меню редактора', SchoolTaskManagementMain,
