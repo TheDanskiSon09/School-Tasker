@@ -22,7 +22,7 @@ connection = connect(
     port=str(settings.DATABASE_PORT),
 )
 
-cursor = connection.cursor()
+cursor = connection.cursor(buffered=True)
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS Community (
@@ -589,8 +589,11 @@ async def send_update_notification(update, context, status, index, is_order: boo
                     return await new_notification.send(context, config=new_config)
                 else:
                     await update.effective_chat.send_message(current_description, parse_mode='HTML')
-        with suppress(KeyError):
-            context.user_data['MEDIA_ADD'].clear()
+        with suppress (KeyError):
+            if context.user_data['MEDIA_ADD']:
+                context.user_data['MEDIA_ADD'].clear()
+        new_notification.cover = settings.MEDIA_ROOT / 'logo.webp'
+        new_notification.images = []
         if logger_status == 'change' or status == 'change':
             return await show_notification_screen(update, context, 'send',
                                                   '✅<strong>Задание успешно изменено!</strong>', [
@@ -635,6 +638,7 @@ async def add_task_school(update, context, task_item, task_description, group_nu
         await send_update_notification(update, context, 'add', context.user_data['ADD_TASK_ITEM_INDEX'],
                                        False, 'add')
         del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
+        context.user_data['MEDIA_ADD'] = []
         return await show_notification_screen(update, context, 'send', '✅<strong>Задание успешно добавлено!</strong>',
                                               [
                                                   [Button('⬅️ В меню редактора', SchoolTaskManagementMain,
