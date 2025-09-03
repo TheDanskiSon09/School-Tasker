@@ -36,8 +36,8 @@ class SchoolTaskChangeTask(base_screen.BaseScreen, RouteMixin):
 
     @register_typing_handler
     async def handle_new_task_text(self, update, context):
-        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
-        """"""
+        if context.user_data['ADDING_TASK_TASK_DESCRIPTION']:
+            del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
         try:
             if context.user_data['ADDING_TASK_TASK_DESCRIPTION']:
                 context.user_data['ADDING_TASK_TASK_DESCRIPTION'] += update.message.text
