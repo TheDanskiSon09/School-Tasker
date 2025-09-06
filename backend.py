@@ -72,8 +72,9 @@ async def get_main_name_of_class_item(context):
     return await _execute_query('SELECT main_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def get_emoji_of_class_item(context):
-    return await _execute_query('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+async def get_emoji_of_class_item(context, main_name):
+    return await _execute_query('SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+                                (main_name,))
 
 
 async def update_item_name_of_task(context):
@@ -90,8 +91,9 @@ async def get_group_of_class_item(context):
     return await _execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
 
 
-async def get_item_index_of_class_item(context):
-    return await _execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+async def get_item_index_of_class_item(context, main_name):
+    return await _execute_query('SELECT item_index FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+                                (main_name,))
 
 
 async def get_count_of_community():
@@ -424,7 +426,7 @@ async def update_items_set_groups_list_by_main_name(context, update):
 async def update_items_set_emoji_by_main_name(context, update):
     await _execute_query('UPDATE ' + context.user_data[
         'CURRENT_CLASS_NAME'] + '_Items SET emoji = %s WHERE main_name = %s',
-                         (update.message.text, context.user_data['MANAGE_ITEM_MAIN_NAME'],))
+                         (context.user_data['CHANGE_ITEM_EMOJI'], context.user_data['MANAGE_ITEM_MAIN_NAME'],))
 
 
 async def create_new_school_item(context):
@@ -529,12 +531,6 @@ async def send_update_notification(update, context, status, index, is_order: boo
         id_row = int(id_row[0])
         user_id_list.append(id_row)
     for user_id in user_id_list:
-        user_name = await get_username_by_id(user_id)
-        user_name = get_clean_var(user_name, 'to_string', 0, True)
-        notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
-        notification_title += await get_notification_title(context, task_description, task_day, task_month_int,
-                                                           task_month,
-                                                           task_year, logger_status)
         new_config = RenderConfig(
             chat_id=user_id,
         )
@@ -547,19 +543,45 @@ async def send_update_notification(update, context, status, index, is_order: boo
             if exists(str(settings.MEDIA_ROOT) + '/' + str(index) + '/'):
                 add_images = listdir(str(settings.MEDIA_ROOT) + '/' + str(index) + '/')
                 for image in add_images:
+                    user_name = await get_username_by_id(user_id)
+                    user_name = get_clean_var(user_name, 'to_string', 0, True)
+                    notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
+                    notification_title += await get_notification_title(context, task_description, task_day,
+                                                                       task_month_int,
+                                                                       task_month,
+                                                                       task_year, logger_status)
                     path = str(index) + '/' + str(image)
                     item = [settings.MEDIA_ROOT / path, notification_title]
                     new_notification.images.append(item)
                 if len(context.user_data['MEDIA_ADD']) == 1:
+                    user_name = await get_username_by_id(user_id)
+                    user_name = get_clean_var(user_name, 'to_string', 0, True)
+                    notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
+                    notification_title += await get_notification_title(context, task_description, task_day,
+                                                                       task_month_int,
+                                                                       task_month,
+                                                                       task_year, logger_status)
                     new_notification.description = notification_title
                     new_notification.current_images = new_notification.images[0]
                     new_notification.cover = new_notification.current_images[0]
             else:
+                user_name = await get_username_by_id(user_id)
+                user_name = get_clean_var(user_name, 'to_string', 0, True)
+                notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
+                notification_title += await get_notification_title(context, task_description, task_day, task_month_int,
+                                                                   task_month,
+                                                                   task_year, logger_status)
                 new_notification.images = [
                     [settings.MEDIA_ROOT / 'logo.webp', notification_title],
                 ]
                 new_notification.description = notification_title
         except KeyError:
+            user_name = await get_username_by_id(user_id)
+            user_name = get_clean_var(user_name, 'to_string', 0, True)
+            notification_title = '<strong>Здравствуйте, ' + str(user_name) + '!' + '\n'
+            notification_title += await get_notification_title(context, task_description, task_day, task_month_int,
+                                                               task_month,
+                                                               task_year, logger_status)
             new_notification = StaticNotificationScreen()
             new_notification.description = notification_title
             new_notification.images = [
@@ -864,9 +886,6 @@ async def get_notification_title(context, task_description, task_day, task_month
             'SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE item_index = %s',
             (context.user_data['ADDING_TASK_INDEX'],))
     except IndexError:
-        title = ''
-        status_dict = {'change': 'изменено',
-                       'add': 'добавлено'}
         task_year = await _execute_query(
             'SELECT task_year FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_index = %s',
             (context.user_data['ADDING_TASK_INDEX'],))
