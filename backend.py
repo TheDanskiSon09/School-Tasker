@@ -83,12 +83,14 @@ async def update_item_name_of_task(context):
                          (context.user_data['task_item'], context.user_data['task_index']))
 
 
-async def get_rod_name_of_class_item(context):
-    return await _execute_query('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+async def get_rod_name_of_class_item(context, main_name):
+    return await _execute_query('SELECT rod_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+                                (main_name,))
 
 
-async def get_group_of_class_item(context):
-    return await _execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items')
+async def get_group_of_class_item(context, main_name):
+    return await _execute_query('SELECT groups_list FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s',
+                                (main_name,))
 
 
 async def get_item_index_of_class_item(context, main_name):
