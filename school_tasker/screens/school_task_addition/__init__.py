@@ -27,12 +27,12 @@ class SchoolTaskAddition(base_screen.BaseScreen):
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             main_name_list = await backend.get_main_name_of_class_item(context)
-            groups_list = await backend.get_group_of_class_item(context)
             for i in range(db_length):
                 main_name = get_clean_var(main_name_list, 'to_string', i, True)
                 item_index = await backend.get_item_index_of_class_item(context, main_name)
                 item_index = get_clean_var(item_index, 'to_string', 0, True)
-                groups = get_clean_var(groups_list, 'to_string', i, True)
+                groups_list = await backend.get_group_of_class_item(context, main_name)
+                groups = get_clean_var(groups_list, 'to_string', 0, True)
                 emoji = await backend.get_emoji_of_class_item(context, main_name)
                 emoji = get_clean_var(emoji, 'to_string', 0, True)
                 keyboard.append([Button(emoji + main_name, self.get_school_item,
