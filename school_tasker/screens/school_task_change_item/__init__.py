@@ -37,10 +37,10 @@ class SchoolTaskChangeItem(base_screen.BaseScreen):
         db_length = get_clean_var(db_length, 'to_int', 0, True)
         if db_length > 0:
             main_name_list = await backend.get_main_name_of_class_item(context)
-            emoji_list = await backend.get_emoji_of_class_item(context)
             for i in range(db_length):
-                main_name = get_clean_var(main_name_list, 'to_string', i - 1, True)
-                emoji = get_clean_var(emoji_list, 'to_string', i - 1, True)
+                main_name = get_clean_var(main_name_list, 'to_string', i, True)
+                emoji = await backend.get_emoji_of_class_item(context, main_name)
+                emoji = get_clean_var(emoji, 'to_string', 0, True)
                 keyboard.append([Button(emoji + main_name, self.change_item,
                                         source_type=SourceTypes.HANDLER_SOURCE_TYPE,
                                         payload=dumps({'task_item': main_name}))])

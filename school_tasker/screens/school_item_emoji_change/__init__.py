@@ -21,10 +21,12 @@ class SchoolItemEmojiChange(school_item_change_base_class.SchoolItemChangeBaseCl
 
     @register_typing_handler
     async def handle_message(self, update, context):
-        if len(update.message.text) - 1 == 1 and is_emoji(update.message.text):
-            context.user_data['CURRENT_TYPING_ACTION'] = ''
-            await backend.update_items_set_emoji_by_main_name(context, update)
-            return await backend.show_notification_screen(update, context, 'send',
+        for symbol in update.message.text:
+            if is_emoji(symbol):
+                context.user_data['CURRENT_TYPING_ACTION'] = ''
+                context.user_data['CHANGE_ITEM_EMOJI'] = symbol
+                await backend.update_items_set_emoji_by_main_name(context, update)
+                return await backend.show_notification_screen(update, context, 'send',
                                                           ITEM_EMOJI_WAS_SUCCESSFULLY_CHANGED, [
                                                               [Button(CHANGE_ITEM_EMOJI_AGAIN,
                                                                       self.go_change_emoji,
@@ -42,7 +44,6 @@ class SchoolItemEmojiChange(school_item_change_base_class.SchoolItemChangeBaseCl
                                                                       source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                                ],
                                                           ])
-        else:
             return await SchoolItemEmojiChange().jump(update, context)
 
     @register_button_handler

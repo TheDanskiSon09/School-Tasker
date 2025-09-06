@@ -34,25 +34,24 @@ class CommunityItemEmojiAddition(base_screen.BaseScreen, RouteMixin):
 
     @register_typing_handler
     async def handle_message(self, update, context):
-        if len(update.message.text) - 1 == 1 and is_emoji(update.message.text):
-            context.user_data['CURRENT_TYPING_ACTION'] = ''
-            context.user_data['CREATING_ITEM_EMOJI'] = update.message.text
-            await backend.create_new_school_item(context)
-            return await backend.show_notification_screen(update, context, 'send',
-                                                          YOUR_ITEM_WAS_SUCCESSFULLY_CREATED,
-                                                          [
-                                                              [Button(CREATE_MORE_ITEM,
-                                                                      self.go_create_more_items,
-                                                                      source_type=SourceTypes.HANDLER_SOURCE_TYPE),
-                                                               ],
-                                                              [Button(TO_THE_ITEM_SCREEN,
-                                                                      community_item_management.CommunityItemManagement,
-                                                                      source_type=SourceTypes.MOVE_SOURCE_TYPE),
-                                                               ],
-                                                              [Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
-                                                                      source_type=SourceTypes.MOVE_SOURCE_TYPE),
-                                                               ]])
-        else:
+        for symbol in update.message.text:
+            if is_emoji(symbol):
+                context.user_data['CREATING_ITEM_EMOJI'] = symbol
+                await backend.create_new_school_item(context)
+                return await backend.show_notification_screen(update, context, 'send',
+                                                              YOUR_ITEM_WAS_SUCCESSFULLY_CREATED,
+                                                              [
+                                                                  [Button(CREATE_MORE_ITEM,
+                                                                          self.go_create_more_items,
+                                                                          source_type=SourceTypes.HANDLER_SOURCE_TYPE),
+                                                                   ],
+                                                                  [Button(TO_THE_ITEM_SCREEN,
+                                                                          community_item_management.CommunityItemManagement,
+                                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                                   ],
+                                                                  [Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
+                                                                          source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                                   ]])
             return await CommunityItemEmojiAddition().jump_along_route(update, context)
 
     @register_button_handler
