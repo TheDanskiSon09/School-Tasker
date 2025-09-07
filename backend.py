@@ -635,6 +635,7 @@ async def send_update_notification(update, context, status, index, is_order: boo
                 context.user_data['MEDIA_ADD'].clear()
         new_notification.cover = settings.MEDIA_ROOT / 'logo.webp'
         new_notification.images = []
+        del notification_screen_class
         if logger_status == 'change' or status == 'change':
             return await show_notification_screen(update, context, 'send',
                                                   '✅<strong>Задание успешно изменено!</strong>', [
