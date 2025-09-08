@@ -552,6 +552,7 @@ async def send_update_notification(update, context, status, index, is_order: boo
                     new_notification.images = []
             else:
                 new_notification = notification_screen_class
+            new_notification.cover = settings.MEDIA_ROOT / 'logo.webp'
             if exists(str(settings.MEDIA_ROOT) + '/' + str(index) + '/'):
                 add_images = listdir(str(settings.MEDIA_ROOT) + '/' + str(index) + '/')
                 for image in add_images:
@@ -633,8 +634,6 @@ async def send_update_notification(update, context, status, index, is_order: boo
         with suppress(KeyError):
             if context.user_data['MEDIA_ADD']:
                 context.user_data['MEDIA_ADD'].clear()
-        new_notification.cover = settings.MEDIA_ROOT / 'logo.webp'
-        new_notification.images = []
         if logger_status == 'change' or status == 'change':
             return await show_notification_screen(update, context, 'send',
                                                   '✅<strong>Задание успешно изменено!</strong>', [
