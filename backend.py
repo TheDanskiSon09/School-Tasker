@@ -536,11 +536,11 @@ async def send_update_notification(update, context, status, index, is_order: boo
         id_row = list(id_row)
         id_row = int(id_row[0])
         user_id_list.append(id_row)
-    notification_screen_class = None
     for user_id in user_id_list:
         new_config = RenderConfig(
             chat_id=user_id,
         )
+        notification_screen_class = None
         try:
             if not notification_screen_class:
                 if len(context.user_data['MEDIA_ADD']) > 1:
@@ -635,7 +635,6 @@ async def send_update_notification(update, context, status, index, is_order: boo
                 context.user_data['MEDIA_ADD'].clear()
         new_notification.cover = settings.MEDIA_ROOT / 'logo.webp'
         new_notification.images = []
-        del notification_screen_class
         if logger_status == 'change' or status == 'change':
             return await show_notification_screen(update, context, 'send',
                                                   '✅<strong>Задание успешно изменено!</strong>', [
