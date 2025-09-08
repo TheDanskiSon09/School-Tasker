@@ -29,8 +29,8 @@ class CommunityJoin(base_screen.BaseScreen):
             community_list = await backend.get_name_of_community()
             community_password_list = await backend.get_community_passwords()
             for community in range(check_length):
-                new_community = get_clean_var(community_list, 'to_string', community - 1, True)
-                new_community_password = get_clean_var(community_password_list, 'to_string', community - 1, True)
+                new_community = get_clean_var(community_list, 'to_string', community, True)
+                new_community_password = get_clean_var(community_password_list, 'to_string', community, True)
                 keyboard.append([Button(new_community, self.go_enter_password,
                                         source_type=SourceTypes.HANDLER_SOURCE_TYPE,
                                         payload=dumps({'ENTER_COMMUNITY_NAME': new_community,
