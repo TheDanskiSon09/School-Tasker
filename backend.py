@@ -677,10 +677,10 @@ async def add_task_school(update, context, task_item, task_description, group_nu
                     await convert_to_webp(original + '.jpeg', original + '.webp')
                     remove(original + '.jpeg')
         context.user_data['IS_IN_MEDIA_SCREEN'] = False
+        context.user_data['MEDIA_ADD'] = []
+        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
         await send_update_notification(update, context, 'add', context.user_data['ADD_TASK_ITEM_INDEX'],
                                        False, 'add')
-        del context.user_data['ADDING_TASK_TASK_DESCRIPTION']
-        context.user_data['MEDIA_ADD'] = []
         return await show_notification_screen(update, context, 'send', '✅<strong>Задание успешно добавлено!</strong>',
                                               [
                                                   [Button('⬅️ В меню редактора', SchoolTaskManagementMain,
@@ -862,7 +862,7 @@ async def get_multipy_async(index, title, context):
 
 
 async def get_button_title(index, context):
-    item_name = await _execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks')
+    item_name = await _execute_query('SELECT item_name FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks ORDER BY hypertime')
     item_name = get_clean_var(item_name, 'to_string', index, True)
     emoji = await _execute_query(
         'SELECT emoji FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Items WHERE main_name = %s', (item_name,))
@@ -874,15 +874,27 @@ async def get_button_title(index, context):
     reserve_item_name = item_name
     item_name = str(emoji) + str(item_name)
     if int(check) > 1:
-        group_number = await _execute_query(
-            'SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s',
+        group_number_count = await _execute_query('SELECT COUNT(group_number) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
             (reserve_item_name,))
-        group_number = get_clean_var(group_number, 'to_string', 0, True)
+        group_number_count = get_clean_var(group_number_count, 'to_int', 0, True)
+        group_number = await _execute_query(
+            'SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
+            (reserve_item_name,))
+        if group_number_count > 1:
+            group_number = get_clean_var(group_number, 'to_string', index, True)
+        else:
+            group_number = get_clean_var(group_number, 'to_string', 0, True)
         item_name += ' (Группа ' + str(group_number) + ') '
-    task_description = await _execute_query(
-        'SELECT task_description FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s',
+    task_description_count = await _execute_query('SELECT COUNT(task_description) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
         (reserve_item_name,))
-    task_description = get_clean_var(task_description, 'to_string', 0, True)
+    task_description_count = get_clean_var(task_description_count, 'to_int', 0, True)
+    task_description = await _execute_query(
+        'SELECT task_description FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
+        (reserve_item_name,))
+    if task_description_count > 1:
+        task_description = get_clean_var(task_description, 'to_string', index, True)
+    else:
+        task_description = get_clean_var(task_description, 'to_string', 0, True)
     task_description = recognise_n_tag(task_description)
     title = item_name
     title += ' : '
