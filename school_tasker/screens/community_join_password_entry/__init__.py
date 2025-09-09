@@ -33,6 +33,8 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
 
     @register_typing_handler
     async def handle_message(self, update, context):
+        print([ord(c) for c in update.message.text])
+        print([ord(c) for c in context.user_data['ENTER_COMMUNITY_PASSWORD']])
         if str(update.message.text) == str(context.user_data['ENTER_COMMUNITY_PASSWORD']):
             await backend.add_user_to_community(update, context)
             context.user_data['CURRENT_TYPING_ACTION'] = ''
