@@ -41,16 +41,16 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
                                                               [
                                                                   Button(JOIN_TO_MORE_COMMUNITIES,
                                                                          community_join.CommunityJoin,
-                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
                                                               ],
                                                               [
                                                                   Button(TO_THE_COMMUNITIES_SCREEN,
                                                                          communitites_main.CommunitiesMain,
-                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
                                                               ],
                                                               [
                                                                   Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
-                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
                                                               ],
                                                           ])
         else:
