@@ -1,6 +1,6 @@
 from hammett.core import Button
 from hammett.core.constants import SourceTypes, DEFAULT_STATE
-from hammett.core.handlers import register_button_handler, register_typing_handler
+from hammett.core.handlers import register_button_handler, register_typing_handler, register_input_handler
 from hammett.core.mixins import RouteMixin
 
 import backend
@@ -9,6 +9,7 @@ from captions import BUTTON_BACK, ENTER_PASSWORD_OF_COMMUNITY, YOU_SUCCESSFULLY_
 from school_tasker.screens import community_join, communitites_main, main_menu
 from school_tasker.screens.base import base_screen
 from states import WRITING_PASSWORD_TO_JOIN
+from telegram.ext import filters
 
 
 class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
@@ -31,7 +32,7 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
         context.user_data['CURRENT_TYPING_ACTION'] = ''
         return await community_join.CommunityJoin().move(update, context)
 
-    @register_typing_handler
+    @register_input_handler(filters=filters.TEXT)
     async def handle_message(self, update, context):
         print('hello!')
         if str(update.message.text) == str(context.user_data['ENTER_COMMUNITY_PASSWORD']):
