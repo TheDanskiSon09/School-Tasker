@@ -27,14 +27,11 @@ class CommunityJoin(base_screen.BaseScreen):
         check_length = get_clean_var(check_length, 'to_int', 0, True)
         if check_length > 0:
             community_list = await backend.get_name_of_community()
-            community_password_list = await backend.get_community_passwords()
             for community in range(check_length):
                 new_community = get_clean_var(community_list, 'to_string', community, True)
-                new_community_password = get_clean_var(community_password_list, 'to_string', community, True)
                 keyboard.append([Button(new_community, self.go_enter_password,
                                         source_type=SourceTypes.HANDLER_SOURCE_TYPE,
-                                        payload=dumps({'ENTER_COMMUNITY_NAME': new_community,
-                                                       'ENTER_COMMUNITY_PASSWORD': new_community_password}))])
+                                        payload=dumps({'ENTER_COMMUNITY_NAME': new_community}))])
         keyboard.append([Button(BUTTON_BACK, communitites_main.CommunitiesMain,
                                 source_type=SourceTypes.MOVE_SOURCE_TYPE)])
         return keyboard
@@ -43,7 +40,6 @@ class CommunityJoin(base_screen.BaseScreen):
     async def go_enter_password(self, update, context):
         from school_tasker.screens import community_join_password_entry
         await get_payload_safe(self, update, context, 'GET_ENTER_COMMUNITY_NAME', 'ENTER_COMMUNITY_NAME')
-        await get_payload_safe(self, update, context, 'GET_ENTER_COMMUNITY_NAME', 'ENTER_COMMUNITY_PASSWORD')
         check_length = await backend.get_count_of_classes_with_class_name_and_user_id(context, update)
         check_length = get_clean_var(check_length, 'to_int', 0, True)
         if check_length < 1:
