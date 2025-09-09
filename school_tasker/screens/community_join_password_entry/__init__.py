@@ -33,11 +33,7 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
 
     @register_typing_handler
     async def handle_message(self, update, context):
-        print(update.message.text)
-        print(context.user_data['ENTER_COMMUNITY_PASSWORD'])
-        print(context.user_data['ENTER_COMMUNITY_NAME'])
-        print(update.message.text == context.user_data['ENTER_COMMUNITY_PASSWORD'])
-        if update.message.text == context.user_data['ENTER_COMMUNITY_PASSWORD']:
+        if str(update.message.text) == str(context.user_data['ENTER_COMMUNITY_PASSWORD']):
             await backend.add_user_to_community(update, context)
             context.user_data['CURRENT_TYPING_ACTION'] = ''
             return await backend.show_notification_screen(update, context, 'send',
@@ -45,16 +41,16 @@ class CommunityJoinPasswordEntry(base_screen.BaseScreen, RouteMixin):
                                                               [
                                                                   Button(JOIN_TO_MORE_COMMUNITIES,
                                                                          community_join.CommunityJoin,
-                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                               ],
                                                               [
                                                                   Button(TO_THE_COMMUNITIES_SCREEN,
                                                                          communitites_main.CommunitiesMain,
-                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                               ],
                                                               [
                                                                   Button(BUTTON_BACK_TO_MENU, main_menu.MainMenu,
-                                                                         source_type=SourceTypes.MOVE_ALONG_ROUTE_SOURCE_TYPE),
+                                                                         source_type=SourceTypes.MOVE_SOURCE_TYPE),
                                                               ],
                                                           ])
         else:
