@@ -47,4 +47,4 @@ class CommunityJoin(base_screen.BaseScreen):
         check_length = await backend.get_count_of_classes_with_class_name_and_user_id(context, update)
         check_length = get_clean_var(check_length, 'to_int', 0, True)
         if check_length < 1:
-            return await community_join_password_entry.CommunityJoinPasswordEntry().move_along_route(update, context)
+            return await community_join_password_entry.CommunityJoinPasswordEntry().move(update, context)
