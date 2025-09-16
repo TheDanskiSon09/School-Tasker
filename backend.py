@@ -136,7 +136,7 @@ async def get_count_of_classes_with_class_name_and_user_id(context, update):
         'FROM UserCommunities '
         'WHERE class_name = %s '
         'AND user_id = %s',
-        (context.user_data['CURRENT_COMMUNITY_NAME'], update.effective_user.id),
+        (context.user_data['CURRENT_CLASS_NAME'], update.effective_user.id),
     )
 
 
