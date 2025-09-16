@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from hammett.conf import settings
 from hammett.core import Button
 from hammett.core.constants import RenderConfig, SourceTypes
-from mysql.connector import IntegrityError, connect
+from mysql.connector import IntegrityError, connect, OperationalError
 from PIL import Image
 from telegram.error import BadRequest, Forbidden
 
@@ -50,14 +50,34 @@ LOGGER = getLogger('hammett')
 
 
 async def _execute_query(query, params=None):
-    if params is None:
-        params = ()
-    cursor.execute(query, params)
-    operation = query.strip().split()[0].upper()
-    if operation == 'SELECT':
-        return cursor.fetchall()
-    connection.commit()
-    return None
+    global connection, cursor
+    try:
+        if params is None:
+            params = ()
+        cursor.execute(query, params)
+        operation = query.strip().split()[0].upper()
+        if operation == 'SELECT':
+            return cursor.fetchall()
+        connection.commit()
+        return None
+    except OperationalError:
+        connection = connect(
+            host=str(settings.DATABASE_HOST),
+            user=str(settings.DATABASE_USER),
+            password=str(settings.DATABASE_PASSWORD),
+            database=str(settings.DATABASE_NAME),
+            port=str(settings.DATABASE_PORT),
+        )
+        cursor = connection.cursor(buffered=True)
+        if params is None:
+            params = ()
+        cursor.execute(query, params)
+        operation = query.strip().split()[0].upper()
+        if operation == 'SELECT':
+            return cursor.fetchall()
+        connection.commit()
+        return None
+
 
 
 async def get_count_of_class_items(context):
@@ -878,9 +898,12 @@ async def get_button_title(index, context):
         group_number = await _execute_query(
             'SELECT group_number FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
             (reserve_item_name,))
-        if group_number_count > 1:
-            group_number = get_clean_var(group_number, 'to_string', index, True)
-        else:
+        try:
+            if group_number_count > 1:
+                group_number = get_clean_var(group_number, 'to_string', index, True)
+            else:
+                group_number = get_clean_var(group_number, 'to_string', 0, True)
+        except IndexError:
             group_number = get_clean_var(group_number, 'to_string', 0, True)
         item_name += ' (Группа ' + str(group_number) + ') '
     task_description_count = await _execute_query('SELECT COUNT(task_description) FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
@@ -889,9 +912,12 @@ async def get_button_title(index, context):
     task_description = await _execute_query(
         'SELECT task_description FROM ' + context.user_data['CURRENT_CLASS_NAME'] + '_Tasks WHERE item_name = %s ORDER BY hypertime',
         (reserve_item_name,))
-    if task_description_count > 1:
-        task_description = get_clean_var(task_description, 'to_string', index, True)
-    else:
+    try:
+        if task_description_count > 1:
+            task_description = get_clean_var(task_description, 'to_string', index, True)
+        else:
+            task_description = get_clean_var(task_description, 'to_string', 0, True)
+    except IndexError:
         task_description = get_clean_var(task_description, 'to_string', 0, True)
     task_description = recognise_n_tag(task_description)
     title = item_name
