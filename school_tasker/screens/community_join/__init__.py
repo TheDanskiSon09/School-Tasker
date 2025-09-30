@@ -40,7 +40,10 @@ class CommunityJoin(base_screen.BaseScreen):
     async def go_enter_password(self, update, context):
         from school_tasker.screens import community_join_password_entry
         await get_payload_safe(self, update, context, 'GET_ENTER_COMMUNITY_NAME', 'ENTER_COMMUNITY_NAME')
-        check_length = await backend.get_count_of_classes_with_class_name_and_user_id(context, update)
-        check_length = get_clean_var(check_length, 'to_int', 0, True)
-        if check_length < 1:
+        try:
+            check_length = await backend.get_count_of_classes_with_class_name_and_user_id(context, update)
+            check_length = get_clean_var(check_length, 'to_int', 0, True)
+            if check_length < 1:
+                return await community_join_password_entry.CommunityJoinPasswordEntry().move_along_route(update, context)
+        except KeyError:
             return await community_join_password_entry.CommunityJoinPasswordEntry().move_along_route(update, context)
